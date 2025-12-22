@@ -1,0 +1,40 @@
+﻿.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.14);
+}
+
+.title {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+@media (max-width: 540px) {
+  .card {
+    padding: 14px;
+  }
+
+  .value {
+    font-size: 24px;
+  }
+}

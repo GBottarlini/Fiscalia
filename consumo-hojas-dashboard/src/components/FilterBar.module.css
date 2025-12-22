@@ -1,0 +1,56 @@
+﻿.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.14);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.field {
+  min-width: 200px;
+}
+
+.fieldWide {
+  min-width: 220px;
+}
+
+.label {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.select {
+  appearance: none;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  min-width: 160px;
+  font-size: 14px;
+}
+
+@media (max-width: 540px) {
+  .card {
+    padding: 14px;
+  }
+
+  .select {
+    min-width: 140px;
+    font-size: 13px;
+  }
+}

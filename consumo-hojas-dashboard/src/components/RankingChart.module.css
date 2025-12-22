@@ -1,0 +1,156 @@
+﻿.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  height: 350px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.14);
+}
+
+.title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+  flex: 1;
+  content-visibility: auto;
+  overflow-y: auto;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rowLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rankChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #0f4c81;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.name {
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.total {
+  font-weight: 700;
+}
+
+.bar {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+  position: relative;
+  margin-top: 8px;
+}
+
+.barFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.2s ease, filter 0.2s ease;
+}
+
+.barFill:hover {
+  filter: brightness(1.05);
+}
+
+.empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 150px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 0 4px;
+}
+
+.pagerButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  width: 36px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.pagerButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
+}
+
+.pagerButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .card {
+    height: 320px;
+  }
+}
+
+@media (max-width: 540px) {
+  .card {
+    height: auto;
+  }
+
+  .itemRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .total {
+    width: 100%;
+    text-align: right;
+  }
+}

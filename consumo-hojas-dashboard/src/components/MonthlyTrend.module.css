@@ -1,0 +1,80 @@
+﻿.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  height: 350px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.14);
+}
+
+.empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.chart {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(28px, 1fr));
+  gap: 12px;
+  align-items: end;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.column {
+  text-align: center;
+}
+
+.value {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bar {
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  transition: height 0.3s ease;
+  margin-top: 6px;
+}
+
+.label {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .card {
+    height: 320px;
+  }
+}
+
+@media (max-width: 540px) {
+  .card {
+    height: auto;
+  }
+
+  .chart {
+    grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    gap: 8px;
+  }
+}

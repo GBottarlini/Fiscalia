@@ -1,0 +1,37 @@
+﻿/* Estilos base y tema ligero para el dashboard */
+:root {
+  --bg: #f2f6f5;
+  --panel: #e6f2ee;
+  --card: #ffffff;
+  --border: #d4e2df;
+  --text: #1f2a37;
+  --muted: #5f6c7b;
+  --accent: #2fb57c;
+  --accent-2: #3b82f6;
+  --accent-soft: #e3f6ee;
+  --success: #1f8f6d;
+  --warning: #f59e0b;
+  --radius: 16px;
+  --shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background:
+    repeating-linear-gradient(0deg, rgba(10, 37, 31, 0.02) 0, rgba(10, 37, 31, 0.02) 1px, transparent 1px, transparent 6px),
+    repeating-linear-gradient(90deg, rgba(10, 37, 31, 0.02) 0, rgba(10, 37, 31, 0.02) 1px, transparent 1px, transparent 6px),
+    linear-gradient(135deg, #f5fbf8 0%, #eef6f4 45%, #e7f0f7 100%);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+}

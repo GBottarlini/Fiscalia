@@ -1,0 +1,96 @@
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  display: grid;
+  place-items: center;
+}
+
+.icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.title {
+  font-weight: 800;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.metricLabel {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metricValue {
+  font-weight: 800;
+  font-size: 18px;
+  margin-top: 2px;
+}
+
+.bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #eef4f3;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.caption {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 8px;
+}
+
+.delta {
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+@media (max-width: 540px) {
+  .card {
+    padding: 14px;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}
