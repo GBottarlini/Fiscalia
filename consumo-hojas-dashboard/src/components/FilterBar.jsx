@@ -1,6 +1,9 @@
 ﻿import styles from "./FilterBar.module.css";
 
 export default function FilterBar({
+  ano,
+  anos,
+  onAnoChange,
   tipoHoja,
   onTipoHojaChange,
   oficina,
@@ -10,6 +13,26 @@ export default function FilterBar({
   return (
     <div className={styles.card}>
       <div className={styles.row}>
+        <div className={styles.field}>
+          <div className={styles.label}>
+            Año
+          </div>
+          <select
+            className={styles.select}
+            value={ano}
+            onChange={(e) => onAnoChange(e.target.value)}
+          >
+            {anos.length ? (
+              anos.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))
+            ) : (
+              <option value="">Sin datos</option>
+            )}
+          </select>
+        </div>
         <div className={styles.field}>
           <div className={styles.label}>
             Tipo de hoja

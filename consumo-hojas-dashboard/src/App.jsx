@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import KpiCard from "./components/KpiCard";
 import FilterBar from "./components/FilterBar";
 import RankingChart from "./components/RankingChart";
@@ -7,15 +7,16 @@ import ScenarioCards from "./components/ScenarioCards";
 import GoalProgress from "./components/GoalProgress";
 import EquivalenceCards from "./components/EquivalenceCards";
 import ChatBot from "./components/ChatBot";
-import { resmasAArboles, resmasALitros, sumResmas, totalesPorMes, totalesPorOficina } from "./lib/data.ts";
+import { mesesParaAno, resmasAArboles, resmasALitros, sumResmas, totalesPorMes, totalesPorOficina } from "./lib/data.ts";
 import { useConsumoData } from "./hooks/useConsumoData.ts";
 import styles from "./App.module.css";
 import { formatNumber } from "./lib/format.ts";
 
 export default function App() {
-  const { oficinas, consumos, loading, meses } = useConsumoData();
+  const { oficinas, consumos, loading, anos } = useConsumoData();
   const [tipoHoja, setTipoHoja] = useState("TODOS");
   const [oficina, setOficina] = useState("");
+  const [ano, setAno] = useState("");
   const monthNames = [
     "Enero",
     "Febrero",
@@ -31,13 +32,23 @@ export default function App() {
     "Diciembre",
   ];
 
+  useEffect(() => {
+    if (ano || !anos.length) return;
+    setAno(anos[anos.length - 1]);
+  }, [ano, anos]);
+
+  const meses = useMemo(() => {
+    return ano ? mesesParaAno(ano) : [];
+  }, [ano]);
+
   const consumosFiltrados = useMemo(() => {
     return consumos.filter((r) => {
+      if (ano && !r.mes.startsWith(ano)) return false;
       if (tipoHoja !== "TODOS" && r.tipo_hoja !== tipoHoja) return false;
       if (oficina && r.codigo_oficina !== oficina) return false;
       return true;
     });
-  }, [consumos, tipoHoja, oficina]);
+  }, [consumos, tipoHoja, oficina, ano]);
 
   const kpis = useMemo(() => {
     if (!consumosFiltrados.length) return null;
@@ -61,15 +72,12 @@ export default function App() {
   }, [consumosFiltrados, oficinas, meses]);
 
   const rankingConNombre = useMemo(() => {
-    const base = totalesPorOficina(consumos, {
-      tipo_hoja: tipoHoja === "TODOS" ? undefined : tipoHoja,
-      oficina: oficina || undefined,
-    });
+    const base = totalesPorOficina(consumosFiltrados);
     return base.map((item) => ({
       ...item,
       nombre: oficinas.find((o) => o.codigo_oficina === item.codigo_oficina)?.oficina ?? item.codigo_oficina,
     }));
-  }, [consumos, oficinas, tipoHoja, oficina]);
+  }, [consumosFiltrados, oficinas]);
 
   const serieMensual = useMemo(() => {
     return totalesPorMes(consumosFiltrados, meses);
@@ -103,14 +111,14 @@ export default function App() {
   }, [serieMensual, monthNames]);
 
   const topGlobal = useMemo(() => {
-    const lista = totalesPorOficina(consumos);
+    const lista = totalesPorOficina(consumosFiltrados);
     const top = lista[0];
     const nombre =
       oficinas.find((o) => o.codigo_oficina === top?.codigo_oficina)?.oficina ??
       top?.codigo_oficina ??
       "-";
     return top ? { ...top, oficina: nombre, resmas: top.total } : null;
-  }, [consumos, oficinas]);
+  }, [consumosFiltrados, oficinas]);
 
   return (
     <div className={styles.shell}>
@@ -118,7 +126,7 @@ export default function App() {
         <header className={styles.page}>
           <div className={styles.heroCard}>
             <div>
-              <h1 className={styles.heroTitle}>Consumo de Hojas 2025</h1>
+              <h1 className={styles.heroTitle}>Consumo de Hojas</h1>
               <p className={styles.heroSub}>
                 Dashboard: Compara oficinas, meses y el impacto en árboles y agua. Usa los filtros y mira el gráfico para detectar picos.
               </p>
@@ -127,7 +135,7 @@ export default function App() {
               <img className={styles.brandSeal} src="/logofiscalia.png" alt="Fiscalia" />
               <div className={styles.chipRow}>
                 <div className={`${styles.chip} ${styles.chipSoftBlue}`}>
-                  Año 2025
+                  Año {ano || "-"}
                 </div>
               </div>
             </div>
@@ -137,6 +145,9 @@ export default function App() {
         <main className={`${styles.page} ${styles.grid}`}>
           <div id="filtros" />
           <FilterBar
+            ano={ano}
+            anos={anos}
+            onAnoChange={setAno}
             tipoHoja={tipoHoja}
             onTipoHojaChange={setTipoHoja}
             oficina={oficina}
@@ -225,6 +236,7 @@ export default function App() {
                   <ChatBot
                     context={{
                       filtros: {
+                        ano: ano || "-",
                         tipoHoja,
                         oficina: oficina || "Todas",
                       },

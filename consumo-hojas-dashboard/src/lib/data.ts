@@ -21,10 +21,12 @@ export type ConsumoRaw = {
 
 export const TIPOS_HOJA = ["A4", "OFICIO"] as const;
 
-export const MESES_2025 = Array.from({ length: 12 }, (_, idx) => {
-  const month = String(idx + 1).padStart(2, "0");
-  return `2025-${month}`;
-});
+export function mesesParaAno(ano: string): string[] {
+  return Array.from({ length: 12 }, (_, idx) => {
+    const month = String(idx + 1).padStart(2, "0");
+    return `${ano}-${month}`;
+  });
+}
 
 export const RESMAS_POR_ARBOL = 16.7; // approx: 1 arbol -> ~8330 hojas -> ~16.7 resmas
 export const LITROS_POR_RESMA = 5000; // approx: 1 resma ~5000 L de agua en produccion
@@ -107,7 +109,7 @@ export function totalesPorOficina(
 
 export function totalesPorMes(
   consumos: Consumo[],
-  meses: string[] = MESES_2025,
+  meses: string[] = [],
   filtroTipo?: Consumo["tipo_hoja"]
 ) {
   const mapa = new Map<string, number>();
@@ -121,4 +123,14 @@ export function totalesPorMes(
     mes,
     total: mapa.get(mes) || 0,
   }));
+}
+
+export function aniosDisponibles(consumos: Consumo[]): string[] {
+  const anos = new Set<string>();
+  for (const r of consumos) {
+    if (!r.mes) continue;
+    const ano = String(r.mes).split("-")[0];
+    if (ano) anos.add(ano);
+  }
+  return Array.from(anos).sort();
 }
