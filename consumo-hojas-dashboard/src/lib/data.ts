@@ -33,8 +33,11 @@ export const LITROS_POR_RESMA = 5000; // approx: 1 resma ~5000 L de agua en prod
 export const HOJAS_POR_RESMA = 500; // approx: 1 resma -> 500 hojas
 export const KG_CO2_POR_RESMA = 2.5; // approx: 1 resma -> 2.5 kg CO2
 
-export async function loadCsv<T>(url: string): Promise<T[]> {
-  const res = await fetch(url);
+export async function loadCsv<T>(url: string, init?: RequestInit): Promise<T[]> {
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    throw new Error(`Failed to load CSV (${res.status})`);
+  }
   const text = await res.text();
 
   const parsed = Papa.parse(text, {

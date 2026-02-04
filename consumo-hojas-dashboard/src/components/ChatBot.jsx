@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { buildAuthHeaders, getToken } from "../lib/auth";
 import styles from "./ChatBot.module.css";
 
 const quickQuestions = [
@@ -24,9 +25,11 @@ export default function ChatBot({ context }) {
     setMessages((prev) => [...prev, { role: "user", content: question }]);
 
     try {
+      const token = getToken();
+      const authHeaders = buildAuthHeaders(token);
       const res = await fetch(`${apiBase}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ question, context: promptContext }),
       });
       const data = await res.json();

@@ -245,3 +245,61 @@
     font-size: 16px;
   }
 }
+
+.loginCard {
+  max-width: 420px;
+  margin: 12vh auto 0;
+  padding: 26px 24px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.loginTitle {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+}
+
+.loginSubtitle {
+  margin: 0 0 18px 0;
+  color: var(--muted);
+}
+
+.loginForm {
+  display: grid;
+  gap: 12px;
+}
+
+.loginLabel {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.loginInput {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.loginError {
+  color: #b42318;
+  font-size: 13px;
+}
+
+.loginButton {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loginButton:hover {
+  filter: brightness(0.96);
+}
