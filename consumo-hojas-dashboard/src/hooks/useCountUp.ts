@@ -24,4 +24,4 @@ export function useCountUp(value: number, duration = 800) {
   }, [value, duration]);
 
   return current;
-}
+} 
