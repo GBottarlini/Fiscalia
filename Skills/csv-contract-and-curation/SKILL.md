@@ -36,6 +36,7 @@ metadata:
 2. `src/data/consumo_resmas*.csv` usan `fecha,mes,oficina,codigo_oficina,tipo_hoja,resmas`.
 3. No renombrar archivos ni encabezados sin pedido explicito: `server/index.js` sirve esos nombres exactos.
 4. `src/lib/data.ts` filtra filas sin `mes`, sin `codigo_oficina` o con `resmas <= 0` en `normalizeConsumos`.
+5. La carga mensual por `POST /api/data/consumo` escribe una fila con esos mismos encabezados y deriva `oficina` desde `oficinas.csv`.
 
 ## Curacion minima
 
@@ -43,6 +44,7 @@ metadata:
 - Mantener `mes` en formato `YYYY-MM` y `resmas` numerico compatible con `toNumberSafe`.
 - Si una oficina cambia de etiqueta, validar que `codigo_oficina` siga siendo la clave de cruce con `oficinas.csv`.
 - Ojo: una fila con `codigo_oficina` vacio se pierde en el dashboard aunque exista el nombre de oficina.
+- Para evitar duplicados funcionales, tratar `mes + codigo_oficina + tipo_hoja` como clave logica de una carga mensual.
 
 ## Chequeos rapidos
 

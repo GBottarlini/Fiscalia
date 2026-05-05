@@ -29,6 +29,10 @@ log_error() {
 extract_frontmatter() {
   local file="$1"
   awk '
+    {
+      sub(/\r$/, "", $0)
+    }
+
     NR == 1 {
       if ($0 != "---") {
         invalid_start = 1

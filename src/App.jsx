@@ -7,11 +7,27 @@ import ScenarioCards from "./components/ScenarioCards";
 import GoalProgress from "./components/GoalProgress";
 import EquivalenceCards from "./components/EquivalenceCards";
 import ChatBot from "./components/ChatBot";
+import AdminConsumoForm from "./components/AdminConsumoForm";
 import { mesesParaAno, resmasAArboles, resmasALitros, sumResmas, totalesPorMes, totalesPorOficina } from "./lib/data.ts";
 import { useConsumoData } from "./hooks/useConsumoData.ts";
 import { buildAuthHeaders, clearToken, getToken, setToken } from "./lib/auth.ts";
 import styles from "./App.module.css";
 import { formatNumber } from "./lib/format.ts";
+
+const monthNames = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
 
 export default function App() {
   const apiBase = import.meta.env.VITE_API_URL || "";
@@ -20,8 +36,9 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const token = getToken();
+  const [view, setView] = useState("dashboard");
 
-  const { oficinas, consumos, loading, anos, error: dataError } = useConsumoData({
+  const { oficinas, consumos, loading, anos, error: dataError, reload } = useConsumoData({
     apiBase,
     token,
     enabled: authStatus === "authed",
@@ -29,21 +46,6 @@ export default function App() {
   const [tipoHoja, setTipoHoja] = useState("TODOS");
   const [oficina, setOficina] = useState("");
   const [ano, setAno] = useState("");
-  const monthNames = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre",
-  ];
-
   useEffect(() => {
     if (ano || !anos.length) return;
     setAno(anos[anos.length - 1]);
@@ -94,6 +96,7 @@ export default function App() {
   const handleLogout = () => {
     clearToken();
     setAuthStatus("guest");
+    setView("dashboard");
     setEmail("");
     setPassword("");
   };
@@ -155,7 +158,7 @@ export default function App() {
     const monthIdx = Number(last.mes.split("-")[1]) - 1;
     const monthLabel = `${monthNames[monthIdx] || last.mes} ${last.mes.split("-")[0]}`;
     return { current: last.total, target, monthLabel, monthsCount: baseList.length };
-  }, [serieMensual, monthNames]);
+  }, [serieMensual]);
 
   const peakMonth = useMemo(() => {
     if (!serieMensual.length) return null;
@@ -169,7 +172,7 @@ export default function App() {
       peakLabel,
       peakTotal: peak.total,
     };
-  }, [serieMensual, monthNames]);
+  }, [serieMensual]);
 
   const topGlobal = useMemo(() => {
     const lista = totalesPorOficina(consumosFiltrados);
@@ -242,6 +245,20 @@ export default function App() {
                   </div>
                   <button
                     type="button"
+                    className={`${styles.navChip} ${view === "dashboard" ? styles.navChipActive : ""}`}
+                    onClick={() => setView("dashboard")}
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.navChip} ${view === "admin" ? styles.navChipActive : ""}`}
+                    onClick={() => setView("admin")}
+                  >
+                    Carga mensual
+                  </button>
+                  <button
+                    type="button"
                     className={`${styles.chip} ${styles.noteChip}`}
                     onClick={handleLogout}
                   >
@@ -252,6 +269,31 @@ export default function App() {
             </div>
           </header>
 
+          {view === "admin" ? (
+            <main className={`${styles.page} ${styles.adminPage}`}>
+              <div className={styles.adminIntro}>
+                <div>
+                  <h2 className={styles.adminTitle}>Carga mensual de resmas</h2>
+                  <p className={styles.adminText}>
+                    Registra o actualiza el consumo mensual sin editar los CSV a mano.
+                  </p>
+                </div>
+              </div>
+
+              {loading && <div className={styles.card}>Cargando oficinas...</div>}
+              {dataError && !loading && (
+                <div className={styles.card}>Error cargando datos: {dataError}</div>
+              )}
+              {!loading && !dataError && (
+                <AdminConsumoForm
+                  apiBase={apiBase}
+                  token={token}
+                  oficinas={oficinas}
+                  onSaved={reload}
+                />
+              )}
+            </main>
+          ) : (
           <main className={`${styles.page} ${styles.grid}`}>
             <div id="filtros" />
             <FilterBar
@@ -366,6 +408,7 @@ export default function App() {
               </>
             )}
           </main>
+          )}
         </div>
       )}
     </div>

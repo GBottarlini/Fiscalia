@@ -35,12 +35,21 @@ metadata:
 1. `GET /api/data/oficinas` -> `text/csv` de `src/data/oficinas.csv`.
 2. `GET /api/data/consumo` -> `text/csv` de `src/data/consumo_resmas.csv`.
 3. `GET /api/data/consumo_2026` -> `text/csv` de `src/data/consumo_resmas_2026.csv`.
-4. Los tres endpoints pasan por `requireAuth` y esperan `Authorization: Bearer <token>`.
-5. `useConsumoData` hace `Promise.all(...)`, parsea con `loadCsv(...)` y luego concatena + normaliza ambos CSV de consumo.
+4. `POST /api/data/consumo` -> JSON protegido para crear o actualizar una fila mensual de consumo.
+5. Los endpoints de datos pasan por `requireAuth` y esperan `Authorization: Bearer <token>`.
+6. `useConsumoData` hace `Promise.all(...)`, parsea con `loadCsv(...)` y luego concatena + normaliza ambos CSV de consumo.
+
+## Contrato de escritura mensual
+
+- Body esperado: `fecha`, `codigo_oficina`, `tipo_hoja`, `resmas`, `mode` opcional (`create` o `update`) y `mes` opcional si se necesita enviar explicitamente.
+- `fecha` debe ser `YYYY-MM-DD`; el backend deriva `mes` como `YYYY-MM`; `tipo_hoja` solo acepta `A4` u `OFICIO`; `resmas` debe ser mayor a 0.
+- `codigo_oficina` se valida contra `src/data/oficinas.csv` y el backend deriva `oficina`.
+- Si ya existe `mes + codigo_oficina + tipo_hoja`, `create` devuelve `409`; `update` reemplaza esa fila.
+- El backend escribe en `consumo_resmas.csv` para años menores a 2026 y en `consumo_resmas_2026.csv` para 2026 o posteriores.
 
 ## Guardrails
 
-- No cambiar paths, metodo HTTP, formato `text/csv` ni shape de errores sin pedido explicito.
+- No cambiar paths, metodos HTTP, formato `text/csv` de lectura ni shape de errores sin pedido explicito.
 - Si tocas auth, preservar `POST /api/auth/login` y `GET /api/auth/me` porque gatean toda la carga.
 - Si agregas o renombras una fuente CSV, el frontend y esta doc deben actualizarse juntos.
 - Cualquier cambio de contrato debe revisar `src/lib/data.ts` y `src/hooks/useConsumoData.ts`.

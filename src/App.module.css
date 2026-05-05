@@ -69,6 +69,13 @@
   background: radial-gradient(circle at 30% 30%, rgba(47, 181, 124, 0.22), rgba(59, 130, 246, 0.18));
   filter: blur(1px);
   border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroCard > * {
+  position: relative;
+  z-index: 1;
 }
 
 .heroTitle {
@@ -196,6 +203,27 @@
   font-size: 12px;
 }
 
+.navChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 31px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.navChipActive {
+  border-color: rgba(47, 181, 124, 0.45);
+  background: var(--accent);
+  color: #fff;
+}
+
 .chipSoftBlue {
   background: #e9f1ff;
 }
@@ -302,4 +330,34 @@
 
 .loginButton:hover {
   filter: brightness(0.96);
+}
+
+.adminPage {
+  display: grid;
+  gap: 16px;
+}
+
+.adminIntro {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  padding: 4px 0 0;
+}
+
+.adminTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.adminText {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+@media (max-width: 620px) {
+  .adminIntro {
+    display: grid;
+  }
 }

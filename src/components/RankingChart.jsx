@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import styles from "./RankingChart.module.css";
 import { formatNumber } from "../lib/format.ts";
 
@@ -6,12 +6,9 @@ export default function RankingChart({ data, maxItems = 10 }) {
   const [page, setPage] = useState(0);
   const itemsPerPage = Math.min(4, maxItems);
 
-  useEffect(() => {
-    setPage(0);
-  }, [data]);
-
   const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
-  const start = page * itemsPerPage;
+  const currentPage = Math.min(page, totalPages - 1);
+  const start = currentPage * itemsPerPage;
   const visible = data.slice(start, start + itemsPerPage);
   const maxVal = data.reduce((acc, item) => Math.max(acc, item.total), 1);
 
@@ -56,19 +53,19 @@ export default function RankingChart({ data, maxItems = 10 }) {
           <button
             type="button"
             className={styles.pagerButton}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
+            onClick={() => setPage(Math.max(0, currentPage - 1))}
+            disabled={currentPage === 0}
           >
             {"<"}
           </button>
           <span className={styles.muted}>
-            {page + 1}/{totalPages}
+            {currentPage + 1}/{totalPages}
           </span>
           <button
             type="button"
             className={styles.pagerButton}
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
+            onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
+            disabled={currentPage >= totalPages - 1}
           >
             {">"}
           </button>

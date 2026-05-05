@@ -15,6 +15,7 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 - Login de administrador contra `POST /api/auth/login`.
 - Verificacion de sesion con `GET /api/auth/me`.
 - Consulta protegida de CSV de oficinas y consumo.
+- Carga mensual protegida de consumo con validacion contra oficinas y contrato CSV.
 - Dashboard con KPIs, ranking, tendencia mensual, metas y equivalencias.
 - Chat contextual "Fisqui" via `POST /api/chat` cuando existe `OPENAI_API_KEY`.
 
@@ -22,6 +23,7 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 
 - `src/App.jsx` - shell principal, autenticacion, filtros y composicion del dashboard.
 - `src/components/` - tarjetas, graficos, filtros y chat.
+- `src/components/AdminConsumoForm.jsx` - panel admin para cargar o actualizar consumo mensual.
 - `src/hooks/useConsumoData.ts` - carga de datos protegidos.
 - `src/lib/data.ts` - transformaciones y agregaciones de consumo.
 - `src/lib/auth.ts` - manejo de token en `localStorage`.
@@ -73,6 +75,17 @@ npm run lint
 - `Skills/csv-contract-and-curation/SKILL.md` fija encabezados, nombres de archivo y criterios de curacion para `src/data/`.
 - `Skills/protected-csv-api-contract/SKILL.md` documenta el contrato entre `server/index.js` y `src/hooks/useConsumoData.ts`.
 - `Skills/dashboard-metrics-and-filters/SKILL.md` documenta filtros, agregaciones y metricas derivadas del dashboard.
+
+## Carga mensual de resmas
+
+El administrador puede cargar consumos desde el panel `Carga mensual` despues de iniciar sesion.
+
+- Guarda contra `POST /api/data/consumo` con el mismo JWT usado por el dashboard.
+- Valida `fecha` (`YYYY-MM-DD`), deriva `mes` (`YYYY-MM`), valida `codigo_oficina` existente en `oficinas.csv`, `tipo_hoja` (`A4` u `OFICIO`) y `resmas > 0`.
+- Deriva el nombre de oficina desde `oficinas.csv` para evitar inconsistencias manuales.
+- Si ya existe una fila para `mes + codigo_oficina + tipo_hoja`, responde conflicto salvo que el panel envie modo actualizacion.
+- Escribe en `src/data/consumo_resmas.csv` para años anteriores a 2026 y en `src/data/consumo_resmas_2026.csv` para 2026 o posteriores, preservando encabezados.
+- Tras guardar, el frontend recarga los CSV y recalcula KPIs, ranking y graficos.
 
 ## Flujo documental recomendado
 

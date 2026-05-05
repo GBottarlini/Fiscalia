@@ -15,6 +15,7 @@ type ConsumoState = {
   loading: boolean;
   anos: string[];
   error?: string;
+  reload: () => void;
 };
 
 type ConsumoParams = {
@@ -29,6 +30,7 @@ export function useConsumoData({ apiBase, token, enabled }: ConsumoParams): Cons
   const [loading, setLoading] = useState(true);
   const [anos, setAnos] = useState<string[]>([]);
   const [error, setError] = useState<string>();
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -60,7 +62,14 @@ export function useConsumoData({ apiBase, token, enabled }: ConsumoParams): Cons
         setLoading(false);
       }
     })();
-  }, [apiBase, token, enabled]);
+  }, [apiBase, token, enabled, reloadKey]);
 
-  return { oficinas, consumos, loading, anos, error };
+  return {
+    oficinas,
+    consumos,
+    loading,
+    anos,
+    error,
+    reload: () => setReloadKey((current) => current + 1),
+  };
 }

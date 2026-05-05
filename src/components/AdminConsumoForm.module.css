@@ -1,0 +1,144 @@
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 720px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.meta {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #f4f8fb;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.fieldHalf,
+.fieldFull {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fieldHalf {
+  grid-column: span 1;
+}
+
+.fieldFull {
+  grid-column: span 2;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: 2px solid rgba(47, 181, 124, 0.22);
+  border-color: rgba(47, 181, 124, 0.65);
+}
+
+.options {
+  grid-column: span 2;
+  padding: 4px 0 0;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.button {
+  grid-column: span 2;
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.success,
+.error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.success {
+  color: #06603d;
+  background: #e7f8ef;
+  border: 1px solid #a9e4c5;
+}
+
+.error {
+  color: #9f1f15;
+  background: #fff0ed;
+  border: 1px solid #ffc9bf;
+}
+
+@media (max-width: 560px) {
+  .header {
+    display: grid;
+  }
+
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldHalf,
+  .fieldFull,
+  .options,
+  .button {
+    grid-column: span 1;
+  }
+}
