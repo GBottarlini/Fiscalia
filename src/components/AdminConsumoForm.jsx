@@ -10,6 +10,19 @@ const initialForm = {
   resmas: "",
 };
 
+async function readJsonResponse(res) {
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+
+  const text = await res.text();
+  if (text.trim().startsWith("<!DOCTYPE")) {
+    throw new Error("La API de carga no respondio JSON. Verifica que el backend este corriendo.");
+  }
+  throw new Error(text || "La API de carga devolvio una respuesta inesperada.");
+}
+
 export default function AdminConsumoForm({ apiBase, token, oficinas, onSaved }) {
   const [form, setForm] = useState(initialForm);
   const [allowUpdate, setAllowUpdate] = useState(false);
@@ -43,7 +56,7 @@ export default function AdminConsumoForm({ apiBase, token, oficinas, onSaved }) 
           mode: allowUpdate ? "update" : "create",
         }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
 
       if (!res.ok) {
         throw new Error(data?.error || "No se pudo guardar la carga.");

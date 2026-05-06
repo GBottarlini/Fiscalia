@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: fiscalia-api
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: fiscalia-data
+      mountPath: /opt/render/project/src/storage
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /opt/render/project/src/storage/data
+      - key: CORS_ORIGIN
+        value: https://fiscalia-dashboard.onrender.com
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+
+  - type: web
+    name: fiscalia-dashboard
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://fiscalia-api.onrender.com

@@ -3,17 +3,21 @@ import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { readFile, writeFile } from "fs/promises";
+import { access, copyFile, mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import Papa from "papaparse";
 
 const app = express();
 const port = process.env.PORT || 3001;
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+const corsOrigins = corsOrigin
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(
   cors({
-    origin: corsOrigin,
+    origin: corsOrigins.includes("*") ? "*" : corsOrigins,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "OPTIONS"],
   })
@@ -23,8 +27,25 @@ app.use(express.json({ limit: "1mb" }));
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const JWT_SECRET = process.env.JWT_SECRET;
-const dataDir = path.resolve(process.cwd(), "src", "data");
+const sourceDataDir = path.resolve(process.cwd(), "src", "data");
+const dataDir = path.resolve(process.env.DATA_DIR || sourceDataDir);
+const DATA_FILES = ["oficinas.csv", "consumo_resmas.csv", "consumo_resmas_2026.csv"];
 const CONSUMO_HEADERS = ["fecha", "mes", "oficina", "codigo_oficina", "tipo_hoja", "resmas"];
+
+async function ensureDataDir() {
+  await mkdir(dataDir, { recursive: true });
+
+  await Promise.all(
+    DATA_FILES.map(async (filename) => {
+      const targetPath = path.join(dataDir, filename);
+      try {
+        await access(targetPath);
+      } catch {
+        await copyFile(path.join(sourceDataDir, filename), targetPath);
+      }
+    })
+  );
+}
 
 function verifyPassword(password) {
   if (!ADMIN_PASSWORD_HASH) return false;
@@ -303,6 +324,17 @@ app.post("/api/chat", requireAuth, async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Chat API running on http://localhost:${port}`);
-});
+async function start() {
+  try {
+    await ensureDataDir();
+    app.listen(port, () => {
+      console.log(`Chat API running on http://localhost:${port}`);
+      console.log(`CSV data directory: ${dataDir}`);
+    });
+  } catch (error) {
+    console.error("Failed to initialize CSV data directory", error);
+    process.exit(1);
+  }
+}
+
+start();

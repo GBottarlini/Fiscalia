@@ -34,9 +34,10 @@ metadata:
 
 1. `src/data/oficinas.csv` usa `codigo_oficina,oficina`.
 2. `src/data/consumo_resmas*.csv` usan `fecha,mes,oficina,codigo_oficina,tipo_hoja,resmas`.
-3. No renombrar archivos ni encabezados sin pedido explicito: `server/index.js` sirve esos nombres exactos.
+3. No renombrar archivos ni encabezados sin pedido explicito: `server/index.js` sirve esos nombres exactos desde `DATA_DIR` o `src/data/`.
 4. `src/lib/data.ts` filtra filas sin `mes`, sin `codigo_oficina` o con `resmas <= 0` en `normalizeConsumos`.
 5. La carga mensual por `POST /api/data/consumo` escribe una fila con esos mismos encabezados y deriva `oficina` desde `oficinas.csv`.
+6. `src/data/` sigue siendo la fuente versionada inicial; en despliegues con `DATA_DIR`, el backend copia estos CSV si el directorio editable esta vacio.
 
 ## Curacion minima
 

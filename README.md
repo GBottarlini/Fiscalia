@@ -45,6 +45,7 @@ Backend (`server/index.js`):
 - `ADMIN_PASSWORD_HASH` - hash `salt:hash` para `crypto.scryptSync`.
 - `JWT_SECRET` - secreto para firmar y validar JWT.
 - `OPENAI_API_KEY` - habilita `POST /api/chat`.
+- `DATA_DIR` - directorio de CSV editable; default `src/data`. En Render apunta al disco persistente.
 
 Frontend:
 
@@ -66,6 +67,45 @@ npm run lint
 ./scripts/validate-skills.sh
 ```
 
+## Despliegue en Render
+
+El repo incluye `render.yaml` para crear dos servicios desde Render Blueprint:
+
+- `fiscalia-api` - Web Service Node/Express.
+- `fiscalia-dashboard` - Static Site Vite/React.
+
+El backend usa `DATA_DIR` para leer y escribir CSV. Si `DATA_DIR` apunta a un disco persistente nuevo, al arrancar copia los CSV versionados desde `src/data/` cuando faltan:
+
+- `oficinas.csv`
+- `consumo_resmas.csv`
+- `consumo_resmas_2026.csv`
+
+Configuracion prevista por `render.yaml`:
+
+- Backend `fiscalia-api`
+  - Build Command: `npm install`
+  - Start Command: `npm start`
+  - Persistent Disk: `/opt/render/project/src/storage`
+  - `DATA_DIR=/opt/render/project/src/storage/data`
+  - `CORS_ORIGIN=https://fiscalia-dashboard.onrender.com`
+- Frontend `fiscalia-dashboard`
+  - Build Command: `npm install && npm run build`
+  - Publish Directory: `./dist`
+  - `VITE_API_URL=https://fiscalia-api.onrender.com`
+
+Variables que Render debe pedir o generar para el backend:
+
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD_HASH`
+- `JWT_SECRET`
+- `OPENAI_API_KEY` si se quiere habilitar el chat
+
+Notas operativas:
+
+- El nombre publico esperado para cada servicio depende del nombre disponible en Render. Si Render cambia alguno, actualizar `CORS_ORIGIN` en el backend y `VITE_API_URL` en el frontend.
+- El Persistent Disk requiere plan pago en Render. Sin disco persistente, las cargas pueden perderse en reinicios o redeploys.
+- El endpoint de prueba del backend es `/api/health` y debe responder `{"ok":true}`.
+
 ## Operacion con agentes
 
 - `AGENTS.md` define jerarquia de fuentes, reglas obligatorias y skills auto-invocables.
@@ -84,7 +124,7 @@ El administrador puede cargar consumos desde el panel `Carga mensual` despues de
 - Valida `fecha` (`YYYY-MM-DD`), deriva `mes` (`YYYY-MM`), valida `codigo_oficina` existente en `oficinas.csv`, `tipo_hoja` (`A4` u `OFICIO`) y `resmas > 0`.
 - Deriva el nombre de oficina desde `oficinas.csv` para evitar inconsistencias manuales.
 - Si ya existe una fila para `mes + codigo_oficina + tipo_hoja`, responde conflicto salvo que el panel envie modo actualizacion.
-- Escribe en `src/data/consumo_resmas.csv` para años anteriores a 2026 y en `src/data/consumo_resmas_2026.csv` para 2026 o posteriores, preservando encabezados.
+- Escribe en `DATA_DIR` si esta configurado; si no, usa `src/data/`. Para años anteriores a 2026 usa `consumo_resmas.csv` y para 2026 o posteriores usa `consumo_resmas_2026.csv`, preservando encabezados.
 - Tras guardar, el frontend recarga los CSV y recalcula KPIs, ranking y graficos.
 
 ## Flujo documental recomendado
