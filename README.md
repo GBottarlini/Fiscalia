@@ -40,7 +40,7 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 Backend (`server/index.js`):
 
 - `PORT` - puerto del server; default `3001`.
-- `CORS_ORIGIN` - origen permitido; default `http://localhost:5173`.
+- `CORS_ORIGIN` - origen permitido; default `http://localhost:5173`. Acepta varios origenes separados por coma y normaliza barras finales.
 - `ADMIN_EMAIL` - usuario administrador.
 - `ADMIN_PASSWORD_HASH` - hash `salt:hash` para `crypto.scryptSync`.
 - `JWT_SECRET` - secreto para firmar y validar JWT.
@@ -64,6 +64,7 @@ Comandos utiles:
 npm run dev
 npm run dev:server
 npm run lint
+node scripts/generate-password-hash.mjs "Fiscalia2026"
 ./scripts/validate-skills.sh
 ```
 
@@ -87,7 +88,7 @@ Configuracion prevista por `render.yaml`:
   - Start Command: `npm start`
   - Persistent Disk: `/opt/render/project/src/storage`
   - `DATA_DIR=/opt/render/project/src/storage/data`
-  - `CORS_ORIGIN=https://fiscalia-dashboard.onrender.com`
+  - `CORS_ORIGIN=https://estadisticafiscalia.netlify.app,https://fiscalia-dashboard.onrender.com`
 - Frontend `fiscalia-dashboard`
   - Build Command: `npm install && npm run build`
   - Publish Directory: `./dist`
@@ -96,13 +97,14 @@ Configuracion prevista por `render.yaml`:
 Variables que Render debe pedir o generar para el backend:
 
 - `ADMIN_EMAIL`
-- `ADMIN_PASSWORD_HASH`
+- `ADMIN_PASSWORD_HASH` generado con `node scripts/generate-password-hash.mjs "tu-contraseña"`; no va la contraseña en texto plano.
 - `JWT_SECRET`
 - `OPENAI_API_KEY` si se quiere habilitar el chat
 
 Notas operativas:
 
 - El nombre publico esperado para cada servicio depende del nombre disponible en Render. Si Render cambia alguno, actualizar `CORS_ORIGIN` en el backend y `VITE_API_URL` en el frontend.
+- Para el frontend actual de Netlify, `CORS_ORIGIN` debe incluir exactamente `https://estadisticafiscalia.netlify.app`.
 - El Persistent Disk requiere plan pago en Render. Sin disco persistente, las cargas pueden perderse en reinicios o redeploys.
 - El endpoint de prueba del backend es `/api/health` y debe responder `{"ok":true}`.
 

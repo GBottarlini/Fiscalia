@@ -9,19 +9,34 @@ import Papa from "papaparse";
 
 const app = express();
 const port = process.env.PORT || 3001;
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
-const corsOrigins = corsOrigin
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const defaultCorsOrigins = ["http://localhost:5173"];
 
-app.use(
-  cors({
-    origin: corsOrigins.includes("*") ? "*" : corsOrigins,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "OPTIONS"],
-  })
-);
+function normalizeOrigin(origin) {
+  return String(origin || "").trim().replace(/\/+$/, "");
+}
+
+const corsOrigins = (process.env.CORS_ORIGIN || defaultCorsOrigins.join(","))
+  .split(",")
+  .map(normalizeOrigin)
+  .filter(Boolean);
+const allowedCorsOrigins = new Set(corsOrigins);
+const allowAnyCorsOrigin = allowedCorsOrigins.has("*");
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowAnyCorsOrigin || allowedCorsOrigins.has(normalizeOrigin(origin))) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "OPTIONS"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;

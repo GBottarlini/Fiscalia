@@ -13,7 +13,7 @@ services:
       - key: DATA_DIR
         value: /opt/render/project/src/storage/data
       - key: CORS_ORIGIN
-        value: https://fiscalia-dashboard.onrender.com
+        value: https://estadisticafiscalia.netlify.app,https://fiscalia-dashboard.onrender.com
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD_HASH
