@@ -9,6 +9,7 @@ import Papa from "papaparse";
 
 const app = express();
 const port = process.env.PORT || 3001;
+const host = "0.0.0.0";
 const defaultCorsOrigins = ["http://localhost:5173"];
 
 function normalizeOrigin(origin) {
@@ -342,8 +343,8 @@ app.post("/api/chat", requireAuth, async (req, res) => {
 async function start() {
   try {
     await ensureDataDir();
-    app.listen(port, () => {
-      console.log(`Chat API running on http://localhost:${port}`);
+    app.listen(port, host, () => {
+      console.log(`Fiscalia API listening on ${host}:${port}`);
       console.log(`CSV data directory: ${dataDir}`);
     });
   } catch (error) {

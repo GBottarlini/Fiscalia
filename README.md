@@ -70,10 +70,7 @@ node scripts/generate-password-hash.mjs "Fiscalia2026"
 
 ## Despliegue en Render
 
-El repo incluye `render.yaml` para crear dos servicios desde Render Blueprint:
-
-- `fiscalia-api` - Web Service Node/Express.
-- `fiscalia-dashboard` - Static Site Vite/React.
+El repo incluye `render.yaml` para crear un unico Web Service Node/Express llamado `Fiscalia`. El frontend existente se mantiene fuera de este Blueprint (por ejemplo, en Netlify).
 
 El backend usa `DATA_DIR` para leer y escribir CSV. Si `DATA_DIR` apunta a un disco persistente nuevo, al arrancar copia los CSV versionados desde `src/data/` cuando faltan:
 
@@ -81,18 +78,17 @@ El backend usa `DATA_DIR` para leer y escribir CSV. Si `DATA_DIR` apunta a un di
 - `consumo_resmas.csv`
 - `consumo_resmas_2026.csv`
 
-Configuracion prevista por `render.yaml`:
+Configuracion prevista por `render.yaml` y por un Web Service creado manualmente:
 
-- Backend `fiscalia-api`
-  - Build Command: `npm install`
-  - Start Command: `npm start`
-  - Persistent Disk: `/opt/render/project/src/storage`
-  - `DATA_DIR=/opt/render/project/src/storage/data`
-  - `CORS_ORIGIN=https://estadisticafiscalia.netlify.app,https://fiscalia-dashboard.onrender.com`
-- Frontend `fiscalia-dashboard`
-  - Build Command: `npm install && npm run build`
-  - Publish Directory: `./dist`
-  - `VITE_API_URL=https://fiscalia-api.onrender.com`
+- Branch: `main`
+- Root Directory: vacio (al omitir `rootDir`, el Blueprint usa la raiz del repositorio)
+- Build Command: `npm ci`
+- Start Command: `npm start`
+- Health Check Path: `/api/health`
+- Plan: `starter` o superior, porque Render no permite discos persistentes en servicios Free.
+- Persistent Disk mount path: `/opt/render/project/src/storage`
+- `DATA_DIR=/opt/render/project/src/storage/data`
+- `CORS_ORIGIN=https://estadisticafiscalia.netlify.app`
 
 Variables que Render debe pedir o generar para el backend:
 
@@ -103,9 +99,9 @@ Variables que Render debe pedir o generar para el backend:
 
 Notas operativas:
 
-- El nombre publico esperado para cada servicio depende del nombre disponible en Render. Si Render cambia alguno, actualizar `CORS_ORIGIN` en el backend y `VITE_API_URL` en el frontend.
+- El nombre publico del backend depende del nombre disponible en Render. Si cambia la URL, actualizar `VITE_API_URL` en el frontend desplegado.
 - Para el frontend actual de Netlify, `CORS_ORIGIN` debe incluir exactamente `https://estadisticafiscalia.netlify.app`.
-- El Persistent Disk requiere plan pago en Render. Sin disco persistente, las cargas pueden perderse en reinicios o redeploys.
+- El Persistent Disk requiere plan pago en Render. En Free, las cargas se pierden en reinicios, suspensiones o redeploys porque el filesystem es efimero.
 - El endpoint de prueba del backend es `/api/health` y debe responder `{"ok":true}`.
 
 ## Operacion con agentes

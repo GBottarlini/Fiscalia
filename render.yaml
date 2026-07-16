@@ -1,10 +1,11 @@
 services:
   - type: web
-    name: fiscalia-api
+    name: Fiscalia
     runtime: node
     plan: starter
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
+    healthCheckPath: /api/health
     disk:
       name: fiscalia-data
       mountPath: /opt/render/project/src/storage
@@ -13,19 +14,10 @@ services:
       - key: DATA_DIR
         value: /opt/render/project/src/storage/data
       - key: CORS_ORIGIN
-        value: https://estadisticafiscalia.netlify.app,https://fiscalia-dashboard.onrender.com
+        value: https://estadisticafiscalia.netlify.app
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD_HASH
         sync: false
       - key: JWT_SECRET
         generateValue: true
-
-  - type: web
-    name: fiscalia-dashboard
-    runtime: static
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://fiscalia-api.onrender.com
