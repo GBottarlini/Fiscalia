@@ -50,6 +50,7 @@ Backend (`server/index.js`):
 Frontend:
 
 - `VITE_API_URL` - base URL del backend; si no existe usa mismo origen.
+  En produccion debe ser `https://fiscalia.onrender.com`.
 
 ## Desarrollo local
 
@@ -89,6 +90,7 @@ Configuracion prevista por `render.yaml` y por un Web Service creado manualmente
 - Persistent Disk mount path: `/opt/render/project/src/storage`
 - `DATA_DIR=/opt/render/project/src/storage/data`
 - `CORS_ORIGIN=https://estadisticafiscalia.netlify.app`
+- En Netlify: `VITE_API_URL=https://fiscalia.onrender.com`
 
 Variables que Render debe pedir o generar para el backend:
 
@@ -102,6 +104,8 @@ Notas operativas:
 - El nombre publico del backend depende del nombre disponible en Render. Si cambia la URL, actualizar `VITE_API_URL` en el frontend desplegado.
 - Para el frontend actual de Netlify, `CORS_ORIGIN` debe incluir exactamente `https://estadisticafiscalia.netlify.app`.
 - El Persistent Disk requiere plan pago en Render. En Free, las cargas se pierden en reinicios, suspensiones o redeploys porque el filesystem es efimero.
+- En Render, el backend rechaza el arranque si `DATA_DIR` no apunta fuera de `src/data`; esto evita informar cargas exitosas sobre almacenamiento efimero.
+- Cada escritura de consumo se serializa, reemplaza el CSV de forma atomica y conserva la version anterior como `<archivo>.bak` dentro del mismo disco.
 - El endpoint de prueba del backend es `/api/health` y debe responder `{"ok":true}`.
 
 ## Operacion con agentes
