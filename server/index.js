@@ -4,7 +4,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { constants } from "fs";
-import { access, copyFile, mkdir, readFile, rename, unlink, writeFile } from "fs/promises";
+import { access, copyFile, mkdir, readFile, rename, stat, unlink, writeFile } from "fs/promises";
 import path from "path";
 import Papa from "papaparse";
 
@@ -49,18 +49,46 @@ const configuredDataDir = String(process.env.DATA_DIR || "").trim();
 const dataDir = path.resolve(configuredDataDir || sourceDataDir);
 const isRender = String(process.env.RENDER || "").toLowerCase() === "true";
 const usesExternalDataDir = dataDir !== sourceDataDir;
+const persistentDiskMountPath = path.resolve(
+  process.env.PERSISTENT_DISK_MOUNT_PATH || "/opt/render/project/src/storage"
+);
 const DATA_FILES = ["oficinas.csv", "consumo_resmas.csv", "consumo_resmas_2026.csv"];
 const CONSUMO_HEADERS = ["fecha", "mes", "oficina", "codigo_oficina", "tipo_hoja", "resmas"];
 const writeQueues = new Map();
+let renderDiskVerified = false;
 
-async function ensureDataDir() {
-  if (isRender && !usesExternalDataDir) {
+async function verifyRenderPersistentDisk() {
+  if (!isRender) return;
+
+  if (!usesExternalDataDir) {
     throw new Error(
       "DATA_DIR must point to the mounted persistent disk when running on Render."
     );
   }
 
+  const relativeDataPath = path.relative(persistentDiskMountPath, dataDir);
+  if (relativeDataPath.startsWith("..") || path.isAbsolute(relativeDataPath)) {
+    throw new Error(
+      `DATA_DIR must be inside the persistent disk mount: ${persistentDiskMountPath}`
+    );
+  }
+
+  const [mountStats, parentStats] = await Promise.all([
+    stat(persistentDiskMountPath),
+    stat(path.dirname(persistentDiskMountPath)),
+  ]);
+  if (mountStats.dev === parentStats.dev) {
+    throw new Error(
+      `No persistent disk is mounted at ${persistentDiskMountPath}.`
+    );
+  }
+
+  renderDiskVerified = true;
+}
+
+async function ensureDataDir() {
   await mkdir(dataDir, { recursive: true });
+  await verifyRenderPersistentDisk();
 
   await Promise.all(
     DATA_FILES.map(async (filename) => {
@@ -135,7 +163,11 @@ app.get("/api/health", async (_req, res) => {
       ok: true,
       service: process.env.RENDER_SERVICE_NAME || "local",
       commit: process.env.RENDER_GIT_COMMIT || null,
-      storage: usesExternalDataDir ? "data-dir" : "source-data",
+      storage: renderDiskVerified
+        ? "render-disk"
+        : usesExternalDataDir
+          ? "data-dir"
+          : "source-data",
     });
   } catch {
     res.status(503).json({ ok: false, error: "CSV storage is not available" });
@@ -336,7 +368,11 @@ app.post("/api/data/consumo", requireAuth, async (req, res) => {
       action: result.duplicateIndex >= 0 ? "updated" : "created",
       filename,
       entry,
-      storage: usesExternalDataDir ? "data-dir" : "source-data",
+      storage: renderDiskVerified
+        ? "render-disk"
+        : usesExternalDataDir
+          ? "data-dir"
+          : "source-data",
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to write consumo CSV", detail: String(error) });
