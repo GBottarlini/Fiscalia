@@ -106,7 +106,7 @@ Notas operativas:
 - El nombre publico del backend depende del nombre disponible en Render. Si cambia la URL, actualizar `VITE_API_URL` en el frontend desplegado.
 - Para el frontend actual de Netlify, `CORS_ORIGIN` debe incluir exactamente `https://estadisticafiscalia.netlify.app`.
 - El Persistent Disk requiere plan pago en Render. En Free, las cargas se pierden en reinicios, suspensiones o redeploys porque el filesystem es efimero.
-- En Render, el backend verifica que `DATA_DIR` este dentro del punto de montaje y que ese punto pertenezca a un dispositivo distinto del filesystem efimero. Si no hay un disco real, rechaza el arranque.
+- En Render, el backend verifica si `DATA_DIR` pertenece a un disco distinto del filesystem efimero. Si no hay un disco real, arranca para mantener disponible el servicio pero informa `storage: "ephemeral"` en `/api/health` y registra una advertencia.
 - Cada escritura de consumo se serializa, reemplaza el CSV de forma atomica y conserva la version anterior como `<archivo>.bak` dentro del mismo disco.
 - El endpoint de prueba del backend es `/api/health` y debe responder `{"ok":true}`.
 
