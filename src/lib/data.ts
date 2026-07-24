@@ -34,7 +34,7 @@ export const HOJAS_POR_RESMA = 500; // approx: 1 resma -> 500 hojas
 export const KG_CO2_POR_RESMA = 2.5; // approx: 1 resma -> 2.5 kg CO2
 
 export async function loadCsv<T>(url: string, init?: RequestInit): Promise<T[]> {
-  const res = await fetch(url, init);
+  const res = await fetch(url, { ...init, cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to load CSV (${res.status})`);
   }
