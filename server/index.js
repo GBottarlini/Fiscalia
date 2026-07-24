@@ -61,26 +61,36 @@ async function verifyRenderPersistentDisk() {
   if (!isRender) return;
 
   if (!usesExternalDataDir) {
-    throw new Error(
-      "DATA_DIR must point to the mounted persistent disk when running on Render."
+    console.warn(
+      "WARNING: Render is using the ephemeral repository filesystem. CSV changes can be lost."
     );
+    return;
   }
 
   const relativeDataPath = path.relative(persistentDiskMountPath, dataDir);
   if (relativeDataPath.startsWith("..") || path.isAbsolute(relativeDataPath)) {
-    throw new Error(
-      `DATA_DIR must be inside the persistent disk mount: ${persistentDiskMountPath}`
+    console.warn(
+      `WARNING: DATA_DIR is outside the expected disk mount ${persistentDiskMountPath}.`
     );
+    return;
   }
 
-  const [mountStats, parentStats] = await Promise.all([
-    stat(persistentDiskMountPath),
-    stat(path.dirname(persistentDiskMountPath)),
-  ]);
-  if (mountStats.dev === parentStats.dev) {
-    throw new Error(
-      `No persistent disk is mounted at ${persistentDiskMountPath}.`
+  try {
+    const [mountStats, parentStats] = await Promise.all([
+      stat(persistentDiskMountPath),
+      stat(path.dirname(persistentDiskMountPath)),
+    ]);
+    if (mountStats.dev === parentStats.dev) {
+      console.warn(
+        `WARNING: No persistent disk is mounted at ${persistentDiskMountPath}.`
+      );
+      return;
+    }
+  } catch {
+    console.warn(
+      `WARNING: The persistent disk mount ${persistentDiskMountPath} is unavailable.`
     );
+    return;
   }
 
   renderDiskVerified = true;
@@ -165,7 +175,9 @@ app.get("/api/health", async (_req, res) => {
       commit: process.env.RENDER_GIT_COMMIT || null,
       storage: renderDiskVerified
         ? "render-disk"
-        : usesExternalDataDir
+        : isRender
+          ? "ephemeral"
+          : usesExternalDataDir
           ? "data-dir"
           : "source-data",
     });
@@ -370,7 +382,9 @@ app.post("/api/data/consumo", requireAuth, async (req, res) => {
       entry,
       storage: renderDiskVerified
         ? "render-disk"
-        : usesExternalDataDir
+        : isRender
+          ? "ephemeral"
+          : usesExternalDataDir
           ? "data-dir"
           : "source-data",
     });
