@@ -3,7 +3,8 @@ import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { access, copyFile, mkdir, readFile, writeFile } from "fs/promises";
+import { constants } from "fs";
+import { access, copyFile, mkdir, readFile, rename, unlink, writeFile } from "fs/promises";
 import path from "path";
 import Papa from "papaparse";
 
@@ -44,23 +45,53 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const JWT_SECRET = process.env.JWT_SECRET;
 const sourceDataDir = path.resolve(process.cwd(), "src", "data");
-const dataDir = path.resolve(process.env.DATA_DIR || sourceDataDir);
+const configuredDataDir = String(process.env.DATA_DIR || "").trim();
+const dataDir = path.resolve(configuredDataDir || sourceDataDir);
+const isRender = String(process.env.RENDER || "").toLowerCase() === "true";
+const usesExternalDataDir = dataDir !== sourceDataDir;
 const DATA_FILES = ["oficinas.csv", "consumo_resmas.csv", "consumo_resmas_2026.csv"];
 const CONSUMO_HEADERS = ["fecha", "mes", "oficina", "codigo_oficina", "tipo_hoja", "resmas"];
+const writeQueues = new Map();
 
 async function ensureDataDir() {
+  if (isRender && !usesExternalDataDir) {
+    throw new Error(
+      "DATA_DIR must point to the mounted persistent disk when running on Render."
+    );
+  }
+
   await mkdir(dataDir, { recursive: true });
 
   await Promise.all(
     DATA_FILES.map(async (filename) => {
       const targetPath = path.join(dataDir, filename);
       try {
-        await access(targetPath);
-      } catch {
-        await copyFile(path.join(sourceDataDir, filename), targetPath);
+        await copyFile(
+          path.join(sourceDataDir, filename),
+          targetPath,
+          constants.COPYFILE_EXCL
+        );
+      } catch (error) {
+        if (error?.code !== "EEXIST") {
+          throw error;
+        }
       }
     })
   );
+}
+
+async function withFileWriteLock(filename, task) {
+  const previous = writeQueues.get(filename) || Promise.resolve();
+  const current = previous.catch(() => undefined).then(task);
+  writeQueues.set(filename, current);
+
+  try {
+    return await current;
+  } finally {
+    if (writeQueues.get(filename) === current) {
+      writeQueues.delete(filename);
+    }
+  }
 }
 
 function verifyPassword(password) {
@@ -96,8 +127,19 @@ function requireAuth(req, res, next) {
   }
 }
 
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
+app.get("/api/health", async (_req, res) => {
+  try {
+    await Promise.all(DATA_FILES.map((filename) => access(path.join(dataDir, filename))));
+    res.set("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      service: process.env.RENDER_SERVICE_NAME || "local",
+      commit: process.env.RENDER_GIT_COMMIT || null,
+      storage: usesExternalDataDir ? "data-dir" : "source-data",
+    });
+  } catch {
+    res.status(503).json({ ok: false, error: "CSV storage is not available" });
+  }
 });
 
 app.post("/api/auth/login", (req, res) => {
@@ -129,6 +171,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 async function sendCsv(res, filename) {
   const filePath = path.join(dataDir, filename);
   const csv = await readFile(filePath, "utf-8");
+  res.set("Cache-Control", "no-store, max-age=0");
   res.type("text/csv").send(csv);
 }
 
@@ -147,8 +190,19 @@ async function readCsv(filename) {
 
 async function writeCsv(filename, rows, fields) {
   const filePath = path.join(dataDir, filename);
+  const backupPath = `${filePath}.bak`;
+  const tempPath = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
   const csv = Papa.unparse(rows, { columns: fields, header: true });
-  await writeFile(filePath, `${csv}\n`, "utf-8");
+
+  await copyFile(filePath, backupPath);
+  try {
+    await writeFile(tempPath, `${csv}\n`, "utf-8");
+    await rename(tempPath, filePath);
+  } finally {
+    await unlink(tempPath).catch((error) => {
+      if (error?.code !== "ENOENT") throw error;
+    });
+  }
 }
 
 function consumoFilenameForMes(mes) {
@@ -245,16 +299,31 @@ app.post("/api/data/consumo", requireAuth, async (req, res) => {
 
     const { mode, ...entry } = validation.value;
     const filename = consumoFilenameForMes(entry.mes);
-    const rows = await readCsv(filename);
-    const duplicateIndex = rows.findIndex((row) => {
-      return (
-        String(row.mes).trim() === entry.mes &&
-        String(row.codigo_oficina).trim() === entry.codigo_oficina &&
-        String(row.tipo_hoja).trim().toUpperCase() === entry.tipo_hoja
-      );
+    const result = await withFileWriteLock(filename, async () => {
+      const rows = await readCsv(filename);
+      const duplicateIndex = rows.findIndex((row) => {
+        return (
+          String(row.mes).trim() === entry.mes &&
+          String(row.codigo_oficina).trim() === entry.codigo_oficina &&
+          String(row.tipo_hoja).trim().toUpperCase() === entry.tipo_hoja
+        );
+      });
+
+      if (duplicateIndex >= 0 && mode !== "update") {
+        return { conflict: true };
+      }
+
+      if (duplicateIndex >= 0) {
+        rows[duplicateIndex] = entry;
+      } else {
+        rows.push(entry);
+      }
+
+      await writeCsv(filename, rows, CONSUMO_HEADERS);
+      return { duplicateIndex };
     });
 
-    if (duplicateIndex >= 0 && mode !== "update") {
+    if (result.conflict) {
       res.status(409).json({
         error: "Ya existe una carga para ese mes, oficina y tipo de hoja.",
         code: "DUPLICATE_CONSUMO",
@@ -262,18 +331,12 @@ app.post("/api/data/consumo", requireAuth, async (req, res) => {
       return;
     }
 
-    if (duplicateIndex >= 0) {
-      rows[duplicateIndex] = entry;
-    } else {
-      rows.push(entry);
-    }
-
-    await writeCsv(filename, rows, CONSUMO_HEADERS);
-    res.status(duplicateIndex >= 0 ? 200 : 201).json({
+    res.status(result.duplicateIndex >= 0 ? 200 : 201).json({
       ok: true,
-      action: duplicateIndex >= 0 ? "updated" : "created",
+      action: result.duplicateIndex >= 0 ? "updated" : "created",
       filename,
       entry,
+      storage: usesExternalDataDir ? "data-dir" : "source-data",
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to write consumo CSV", detail: String(error) });
