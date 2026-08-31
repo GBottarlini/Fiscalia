@@ -3,7 +3,10 @@ import test from "node:test";
 import {
   createOpenAIClient,
   DEFAULT_MAX_OUTPUT_TOKENS,
+  DEFAULT_OPENAI_TIMEOUT_MS,
+  MAX_OPENAI_TIMEOUT_MS,
   OpenAIProviderError,
+  parseOpenAITimeoutMs,
 } from "../server/openai.js";
 
 function completedResponse(content) {
@@ -66,6 +69,14 @@ test("defaults the Responses API model to gpt-4o-mini", async () => {
 
   await client.generate({ instructions: "rules", input: "question" });
   assert.equal(requestBody.model, "gpt-4o-mini");
+});
+
+test("uses a bounded 25-second default and safely parses configured timeouts", () => {
+  assert.equal(DEFAULT_OPENAI_TIMEOUT_MS, 25_000);
+  assert.equal(parseOpenAITimeoutMs("12000"), 12_000);
+  assert.equal(parseOpenAITimeoutMs("not-a-number"), undefined);
+  assert.equal(parseOpenAITimeoutMs("0"), undefined);
+  assert.equal(parseOpenAITimeoutMs("60000"), MAX_OPENAI_TIMEOUT_MS);
 });
 
 test("aborts a provider request at the configured timeout", async () => {

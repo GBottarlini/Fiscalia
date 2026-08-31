@@ -2,7 +2,8 @@ const RESPONSES_URL = "https://api.openai.com/v1/responses";
 
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 export const DEFAULT_MAX_OUTPUT_TOKENS = 300;
-export const DEFAULT_OPENAI_TIMEOUT_MS = 10_000;
+export const DEFAULT_OPENAI_TIMEOUT_MS = 25_000;
+export const MAX_OPENAI_TIMEOUT_MS = 25_000;
 
 export class OpenAIProviderError extends Error {
   constructor(code, message) {
@@ -54,6 +55,13 @@ function timeoutError() {
   return new OpenAIProviderError("CHAT_TIMEOUT", "OpenAI request timed out");
 }
 
+export function parseOpenAITimeoutMs(value) {
+  if (value === undefined || value === null || String(value).trim() === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  return Math.min(Math.floor(parsed), MAX_OPENAI_TIMEOUT_MS);
+}
+
 async function waitForRetry({ sleep, retryDelayMs, deadline }) {
   const remainingMs = deadline - Date.now();
   if (remainingMs <= 0) throw timeoutError();
@@ -85,6 +93,7 @@ export function createOpenAIClient({
   sleep = wait,
 } = {}) {
   if (typeof fetchImpl !== "function") throw new Error("A fetch implementation is required.");
+  const totalTimeoutMs = parseOpenAITimeoutMs(timeoutMs) ?? DEFAULT_OPENAI_TIMEOUT_MS;
 
   return {
     async generate({ instructions, input }) {
@@ -92,7 +101,7 @@ export function createOpenAIClient({
         throw new OpenAIProviderError("CHAT_NOT_CONFIGURED", "OpenAI is not configured");
       }
 
-      const deadline = Date.now() + timeoutMs;
+      const deadline = Date.now() + totalTimeoutMs;
       let lastStatus = 0;
 
       for (let attempt = 0; attempt < 2; attempt += 1) {

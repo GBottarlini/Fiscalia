@@ -53,6 +53,7 @@ Backend (`server/app.js`, `server/index.js` y `server/storage.js`):
 - `JWT_SECRET` - secreto para firmar y validar JWT.
 - `OPENAI_API_KEY` - habilita `POST /api/chat`.
 - `OPENAI_MODEL` - modelo de Responses API; default `gpt-4o-mini`.
+- `OPENAI_TIMEOUT_MS` - timeout total opcional en milisegundos; default y maximo seguro `25000`. No configurar valores mayores ni eliminar el limite.
 - `DATA_DIR` - directorio de CSV editable para el servidor local; default `src/data`. No se usa en Netlify Functions.
 - `CONTEXT` - Netlify lo define por contexto de deploy. Solo `production` puede inicializar o escribir el store site-wide.
 

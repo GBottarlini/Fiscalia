@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import Papa from "papaparse";
 import { buildChatInput, CHAT_INSTRUCTIONS, normalizeChatRequest } from "./chat.js";
-import { createOpenAIClient, OpenAIProviderError } from "./openai.js";
+import { createOpenAIClient, OpenAIProviderError, parseOpenAITimeoutMs } from "./openai.js";
 
 export const CONSUMO_HEADERS = [
   "fecha",
@@ -89,6 +89,7 @@ export function createApp({ storage, env = process.env, openAIClient, logger = c
     createOpenAIClient({
       apiKey: env.OPENAI_API_KEY,
       model: String(env.OPENAI_MODEL || "").trim() || undefined,
+      timeoutMs: parseOpenAITimeoutMs(env.OPENAI_TIMEOUT_MS),
     });
   const defaultCorsOrigins = ["http://localhost:5173"];
   const corsOrigins = (env.CORS_ORIGIN || defaultCorsOrigins.join(","))

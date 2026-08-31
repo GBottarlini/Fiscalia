@@ -18,6 +18,7 @@ Configurar las variables solo en la interfaz privada de Netlify, con alcance par
 
 - `OPENAI_API_KEY`: habilita el proveedor. No registrar, imprimir ni comprobar su valor desde comandos compartidos.
 - `OPENAI_MODEL`: opcional; usa `gpt-4o-mini` si no se define.
+- `OPENAI_TIMEOUT_MS`: opcional; timeout total en milisegundos, con valor predeterminado de `25000` y un maximo seguro de `25000`. Puede reducirse, pero no se deben configurar valores mayores ni intentar eliminar el limite.
 
 La validez de la clave solo queda demostrada por una solicitud funcional. Una variable presente no garantiza que la clave sea valida, tenga cuota o pueda usar el modelo configurado.
 
@@ -28,7 +29,7 @@ La validez de la clave solo queda demostrada por una solicitud funcional. Una va
 3. Revisar uso, precio, latencia y limites despues de modificar `OPENAI_MODEL`.
 4. Investigar aumentos inesperados de solicitudes sin registrar preguntas, contexto ni tokens.
 
-El backend limita cada salida a 300 tokens y realiza como maximo un reintento ante `429`, `408`, errores de red o respuestas `5xx`, solamente si queda tiempo dentro del timeout total de 10 segundos.
+El backend limita cada salida a 300 tokens y realiza como maximo un reintento ante `429`, `408`, errores de red o respuestas `5xx`, solamente si queda tiempo dentro del timeout total de 25 segundos. El timeout incluye la espera antes del reintento y nunca supera el maximo configurado.
 
 ## Smoke test de produccion
 
