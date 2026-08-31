@@ -5,6 +5,7 @@ import crypto from "crypto";
 import Papa from "papaparse";
 import { buildChatInput, CHAT_INSTRUCTIONS, normalizeChatRequest } from "./chat.js";
 import { createOpenAIClient, OpenAIProviderError, parseOpenAITimeoutMs } from "./openai.js";
+import { createGeminiClient, GeminiProviderError, parseGeminiTimeoutMs } from "./gemini.js";
 
 export const CONSUMO_HEADERS = [
   "fecha",
@@ -80,17 +81,14 @@ const CHAT_ERROR_RESPONSES = {
   CHAT_INVALID_RESPONSE: { status: 502, message: "El servicio de chat no devolvió una respuesta válida." },
 };
 
-export function createApp({ storage, env = process.env, openAIClient, logger = console }) {
+export function createApp({ storage, env = process.env, openAIClient, geminiClient, logger = console }) {
   if (!storage) throw new Error("A CSV storage adapter is required.");
 
   const app = express();
-  const chatClient =
-    openAIClient ??
-    createOpenAIClient({
-      apiKey: env.OPENAI_API_KEY,
-      model: String(env.OPENAI_MODEL || "").trim() || undefined,
-      timeoutMs: parseOpenAITimeoutMs(env.OPENAI_TIMEOUT_MS),
-    });
+  const aiProvider = String(env.AI_PROVIDER || "gemini").trim().toLowerCase();
+  const chatClient = aiProvider === "openai"
+    ? openAIClient ?? createOpenAIClient({ apiKey: env.OPENAI_API_KEY, model: String(env.OPENAI_MODEL || "").trim() || undefined, timeoutMs: parseOpenAITimeoutMs(env.OPENAI_TIMEOUT_MS) })
+    : geminiClient ?? createGeminiClient({ apiKey: env.GEMINI_API_KEY, model: String(env.GEMINI_MODEL || "").trim() || undefined, timeoutMs: parseGeminiTimeoutMs(env.GEMINI_TIMEOUT_MS) });
   const defaultCorsOrigins = ["http://localhost:5173"];
   const corsOrigins = (env.CORS_ORIGIN || defaultCorsOrigins.join(","))
     .split(",")
@@ -266,7 +264,8 @@ export function createApp({ storage, env = process.env, openAIClient, logger = c
   });
 
   app.post("/api/chat", requireAuth, async (req, res) => {
-    if (!env.OPENAI_API_KEY) {
+    const providerKey = aiProvider === "openai" ? env.OPENAI_API_KEY : env.GEMINI_API_KEY;
+    if (!["gemini", "openai"].includes(aiProvider) || !providerKey) {
       const mapped = CHAT_ERROR_RESPONSES.CHAT_NOT_CONFIGURED;
       res.status(mapped.status).json({ code: "CHAT_NOT_CONFIGURED", error: mapped.message });
       return;
@@ -284,7 +283,7 @@ export function createApp({ storage, env = process.env, openAIClient, logger = c
       });
       res.json({ answer });
     } catch (error) {
-      const code = error instanceof OpenAIProviderError ? error.code : "CHAT_PROVIDER_FAILURE";
+      const code = error instanceof OpenAIProviderError || error instanceof GeminiProviderError ? error.code : "CHAT_PROVIDER_FAILURE";
       const mapped = CHAT_ERROR_RESPONSES[code] || CHAT_ERROR_RESPONSES.CHAT_PROVIDER_FAILURE;
       logger.warn?.("Chat provider request failed", { code, status: mapped.status });
       res.status(mapped.status).json({ code, error: mapped.message });

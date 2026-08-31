@@ -17,7 +17,7 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 - Consulta protegida de CSV de oficinas y consumo.
 - Carga mensual protegida de consumo con validacion contra oficinas y contrato CSV.
 - Dashboard con KPIs, ranking, tendencia mensual, metas y equivalencias.
-- Chat contextual "Fisqui" via OpenAI Responses API en `POST /api/chat` cuando existe `OPENAI_API_KEY`.
+- Chat contextual "Fisqui" via Gemini Developer API en `POST /api/chat`; OpenAI queda disponible como opción explícita.
 
 ## Estructura util
 
@@ -51,9 +51,13 @@ Backend (`server/app.js`, `server/index.js` y `server/storage.js`):
 - `ADMIN_EMAIL` - usuario administrador.
 - `ADMIN_PASSWORD_HASH` - hash `salt:hash` para `crypto.scryptSync`.
 - `JWT_SECRET` - secreto para firmar y validar JWT.
-- `OPENAI_API_KEY` - habilita `POST /api/chat`.
+- `AI_PROVIDER` - proveedor explícito: `gemini` (predeterminado) u `openai`.
+- `GEMINI_API_KEY` - clave privada de Google AI Studio; requerida cuando `AI_PROVIDER=gemini`.
+- `GEMINI_MODEL` - modelo Gemini configurable; predeterminado `gemini-2.5-flash-lite`. Debe estar habilitado para la clave.
+- `GEMINI_TIMEOUT_MS` - timeout total opcional para Gemini; máximo seguro `25000` ms.
+- `OPENAI_API_KEY` - habilita la opción OpenAI solo cuando `AI_PROVIDER=openai`.
 - `OPENAI_MODEL` - modelo de Responses API; default `gpt-4o-mini`.
-- `OPENAI_TIMEOUT_MS` - timeout total opcional en milisegundos; default y maximo seguro `25000`. No configurar valores mayores ni eliminar el limite.
+- `OPENAI_TIMEOUT_MS` - timeout total opcional para OpenAI; default y maximo seguro `25000` ms.
 - `DATA_DIR` - directorio de CSV editable para el servidor local; default `src/data`. No se usa en Netlify Functions.
 - `CONTEXT` - Netlify lo define por contexto de deploy. Solo `production` puede inicializar o escribir el store site-wide.
 
@@ -91,13 +95,13 @@ node scripts/generate-password-hash.mjs "Fiscalia2026"
 - Los deploy previews comparten el store site-wide, pero quedan en modo solo lectura mediante el `CONTEXT` provisto por Netlify.
 - `/api/health` debe responder `{"ok":true,...,"storage":"netlify-blobs"}` en produccion.
 
-Configurar `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET`, `OPENAI_API_KEY` opcional y `OPENAI_MODEL` opcional exclusivamente en la interfaz privada de Netlify, con alcance para Functions. No incluir credenciales en archivos o comandos compartidos. El procedimiento completo para exportar Render, registrar checksums/filas, importar bytes exactos, cortar trafico, verificar y conservar rollback esta en [`docs/netlify-migration.md`](docs/netlify-migration.md).
+Configurar `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET`, `AI_PROVIDER=gemini`, `GEMINI_API_KEY` y opcionalmente `GEMINI_MODEL` exclusivamente en la interfaz privada de Netlify, con alcance para Functions. La clave se crea en Google AI Studio. El nivel Free tiene cuotas limitadas, depende del modelo y puede cambiar; el modelo seleccionado debe estar habilitado para la clave. En ese nivel Google puede usar el contenido para mejorar sus productos: no enviar secretos, JWT, credenciales ni datos fuera del contexto agregado. OpenAI solo se usa si se selecciona explícitamente `AI_PROVIDER=openai` y se configura su clave. No incluir credenciales en archivos o comandos compartidos. El procedimiento completo para exportar Render, registrar checksums/filas, importar bytes exactos, cortar trafico, verificar y conservar rollback esta en [`docs/netlify-migration.md`](docs/netlify-migration.md).
 
 ## Privacidad y operacion de Fisqui
 
-`POST /api/chat` conserva proteccion JWT y envia a OpenAI solamente la pregunta del administrador y una allowlist acotada de metricas agregadas de los filtros actuales. No envia filas CSV, credenciales, JWT, secretos, variables de entorno ni contexto arbitrario del navegador. Las solicitudes usan `store: false`, un limite de salida, timeout estricto y como maximo un reintento para fallas transitorias.
+`POST /api/chat` conserva proteccion JWT y envia al proveedor seleccionado solamente la pregunta del administrador y una allowlist acotada de metricas agregadas de los filtros actuales. No envia filas CSV, credenciales, JWT, secretos, variables de entorno ni contexto arbitrario del navegador. Gemini recibe la clave solo en un header del servidor, un limite de salida, timeout estricto y como maximo un reintento para fallas transitorias. En el nivel Free de Google existe el riesgo adicional de uso del contenido para mejorar productos; no introducir informacion sensible.
 
-Antes de habilitar Fisqui en produccion, configurar alertas de uso y presupuesto en la cuenta de OpenAI y alertas operativas de Functions en Netlify. Revisar consumo despues de cambiar `OPENAI_MODEL`, porque precio, limites y latencia dependen del modelo. El smoke test, los codigos estables y el procedimiento de diagnostico estan en [`docs/chat-operations.md`](docs/chat-operations.md).
+Antes de habilitar Fisqui en produccion, revisar las cuotas Free de Google AI Studio y configurar alertas operativas de Functions en Netlify. Revisar uso, limites y latencia despues de cambiar `GEMINI_MODEL` (o `OPENAI_MODEL` si se selecciona OpenAI). El smoke test, los codigos estables y el procedimiento de diagnostico estan en [`docs/chat-operations.md`](docs/chat-operations.md).
 
 `render.yaml` se conserva marcado como legado solo durante la ventana de rollback. No debe aplicarse como destino activo ni usarse para borrar o mutar recursos productivos de Render.
 

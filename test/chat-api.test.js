@@ -43,7 +43,7 @@ function postChat(baseUrl, body, authorization = authHeader()) {
 test("requires JWT authentication before any provider call", async (t) => {
   let calls = 0;
   const baseUrl = await withServer(t, {
-    env: { JWT_SECRET, OPENAI_API_KEY: "configured" },
+    env: { JWT_SECRET, AI_PROVIDER: "openai", OPENAI_API_KEY: "configured" },
     openAIClient: { async generate() { calls += 1; } },
   });
 
@@ -73,7 +73,7 @@ test("reports missing provider configuration without calling the provider", asyn
 test("trims valid questions and rejects blank or oversized questions", async (t) => {
   const calls = [];
   const baseUrl = await withServer(t, {
-    env: { JWT_SECRET, OPENAI_API_KEY: "configured" },
+    env: { JWT_SECRET, AI_PROVIDER: "openai", OPENAI_API_KEY: "configured" },
     openAIClient: {
       async generate(payload) {
         calls.push(payload);
@@ -95,7 +95,7 @@ test("trims valid questions and rejects blank or oversized questions", async (t)
 test("allowlists and bounds aggregate dashboard context", async (t) => {
   let providerInput = "";
   const baseUrl = await withServer(t, {
-    env: { JWT_SECRET, OPENAI_API_KEY: "configured" },
+    env: { JWT_SECRET, AI_PROVIDER: "openai", OPENAI_API_KEY: "configured" },
     openAIClient: {
       async generate({ input }) {
         providerInput = input;
@@ -157,7 +157,7 @@ test("maps provider failures without exposing raw details in responses or logs",
   const logs = [];
   const rawDetail = "provider-secret-diagnostic";
   const baseUrl = await withServer(t, {
-    env: { JWT_SECRET, OPENAI_API_KEY: "configured" },
+    env: { JWT_SECRET, AI_PROVIDER: "openai", OPENAI_API_KEY: "configured" },
     logger: { warn(message, metadata) { logs.push({ message, metadata }); } },
     openAIClient: {
       async generate() {
@@ -188,7 +188,7 @@ test("maps timeout, rate-limit, and invalid provider output to stable HTTP error
   for (const [code, expectedStatus] of cases) {
     await t.test(code, async (nestedTest) => {
       const baseUrl = await withServer(nestedTest, {
-        env: { JWT_SECRET, OPENAI_API_KEY: "configured" },
+        env: { JWT_SECRET, AI_PROVIDER: "openai", OPENAI_API_KEY: "configured" },
         logger: { warn() {} },
         openAIClient: {
           async generate() {
@@ -204,4 +204,26 @@ test("maps timeout, rate-limit, and invalid provider output to stable HTTP error
       assert.equal(Object.hasOwn(body, "detail"), false);
     });
   }
+});
+
+test("defaults to Gemini and only calls OpenAI when explicitly selected", async (t) => {
+  let geminiCalls = 0;
+  let openAICalls = 0;
+  const defaultBaseUrl = await withServer(t, {
+    env: { JWT_SECRET, GEMINI_API_KEY: "configured" },
+    geminiClient: { async generate() { geminiCalls += 1; return "Gemini"; } },
+    openAIClient: { async generate() { openAICalls += 1; return "OpenAI"; } },
+  });
+  assert.deepEqual(await (await postChat(defaultBaseUrl, { question: "Total" })).json(), { answer: "Gemini" });
+  assert.equal(geminiCalls, 1);
+  assert.equal(openAICalls, 0);
+
+  const openAIBaseUrl = await withServer(t, {
+    env: { JWT_SECRET, AI_PROVIDER: "openai", OPENAI_API_KEY: "configured" },
+    openAIClient: { async generate() { openAICalls += 1; return "OpenAI"; } },
+    geminiClient: { async generate() { geminiCalls += 1; return "Gemini"; } },
+  });
+  assert.deepEqual(await (await postChat(openAIBaseUrl, { question: "Total" })).json(), { answer: "OpenAI" });
+  assert.equal(openAICalls, 1);
+  assert.equal(geminiCalls, 1);
 });
