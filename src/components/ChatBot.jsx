@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildAuthHeaders, getToken } from "../lib/auth";
+import { readChatResponse } from "../lib/chat";
 import styles from "./ChatBot.module.css";
 
 const quickQuestions = [
   "¿Cuál es el impacto en agua con los filtros actuales?",
   "¿Qué mes tuvo mayor consumo?",
-  "¿Cuál es la oficina con más consumo global?",
+  "¿Cuál es la oficina con más consumo según los filtros actuales?",
 ];
 
 export default function ChatBot({ context }) {
@@ -16,13 +17,19 @@ export default function ChatBot({ context }) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const inFlightRequest = useRef(null);
 
   const promptContext = useMemo(() => context || {}, [context]);
 
-  const sendQuestion = async (question) => {
-    if (!question.trim()) return;
+  useEffect(() => () => inFlightRequest.current?.abort(), []);
+
+  const sendQuestion = async (question, { restoreOnFailure = false } = {}) => {
+    const normalizedQuestion = question.trim();
+    if (!normalizedQuestion || inFlightRequest.current) return;
+    const controller = new AbortController();
+    inFlightRequest.current = controller;
     setLoading(true);
-    setMessages((prev) => [...prev, { role: "user", content: question }]);
+    setMessages((prev) => [...prev, { role: "user", content: normalizedQuestion }]);
 
     try {
       const token = getToken();
@@ -30,29 +37,45 @@ export default function ChatBot({ context }) {
       const res = await fetch(`${apiBase}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
-        body: JSON.stringify({ question, context: promptContext }),
+        body: JSON.stringify({ question: normalizedQuestion, context: promptContext }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      const answer = await readChatResponse(res);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.answer || "No pude responder eso." },
+        { role: "assistant", content: answer },
       ]);
-    } catch {
+    } catch (error) {
+      if (restoreOnFailure) setInput((current) => current || normalizedQuestion);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Se produjo un error al consultar el bot." },
+        {
+          role: "assistant",
+          content:
+            error?.name === "AbortError"
+              ? "La consulta fue cancelada."
+              : error instanceof Error
+                ? error.message
+                : "No se pudo consultar a Fisqui.",
+        },
       ]);
     } finally {
-      setLoading(false);
+      if (inFlightRequest.current === controller) {
+        inFlightRequest.current = null;
+        setLoading(false);
+      }
     }
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (inFlightRequest.current) return;
     const question = input;
     setInput("");
-    sendQuestion(question);
+    sendQuestion(question, { restoreOnFailure: true });
   };
+
+  const cancelQuestion = () => inFlightRequest.current?.abort();
 
   return (
     <div className={styles.floating}>
@@ -118,9 +141,14 @@ export default function ChatBot({ context }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Escribe tu pregunta..."
+            maxLength={1000}
           />
-          <button className={styles.send} type="submit" disabled={loading}>
-            Enviar
+          <button
+            className={styles.send}
+            type={loading ? "button" : "submit"}
+            onClick={loading ? cancelQuestion : undefined}
+          >
+            {loading ? "Cancelar" : "Enviar"}
           </button>
         </form>
       </div>

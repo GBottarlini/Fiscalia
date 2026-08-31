@@ -3,6 +3,8 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import Papa from "papaparse";
+import { buildChatInput, CHAT_INSTRUCTIONS, normalizeChatRequest } from "./chat.js";
+import { createOpenAIClient, OpenAIProviderError } from "./openai.js";
 
 export const CONSUMO_HEADERS = [
   "fecha",
@@ -70,10 +72,24 @@ function validateConsumoPayload(body, oficinas) {
   };
 }
 
-export function createApp({ storage, env = process.env }) {
+const CHAT_ERROR_RESPONSES = {
+  CHAT_NOT_CONFIGURED: { status: 503, message: "El chat no está configurado." },
+  CHAT_TIMEOUT: { status: 504, message: "El servicio de chat tardó demasiado en responder." },
+  CHAT_RATE_LIMITED: { status: 429, message: "El servicio de chat está temporalmente ocupado." },
+  CHAT_PROVIDER_FAILURE: { status: 502, message: "No se pudo consultar el servicio de chat." },
+  CHAT_INVALID_RESPONSE: { status: 502, message: "El servicio de chat no devolvió una respuesta válida." },
+};
+
+export function createApp({ storage, env = process.env, openAIClient, logger = console }) {
   if (!storage) throw new Error("A CSV storage adapter is required.");
 
   const app = express();
+  const chatClient =
+    openAIClient ??
+    createOpenAIClient({
+      apiKey: env.OPENAI_API_KEY,
+      model: String(env.OPENAI_MODEL || "").trim() || undefined,
+    });
   const defaultCorsOrigins = ["http://localhost:5173"];
   const corsOrigins = (env.CORS_ORIGIN || defaultCorsOrigins.join(","))
     .split(",")
@@ -250,51 +266,27 @@ export function createApp({ storage, env = process.env }) {
 
   app.post("/api/chat", requireAuth, async (req, res) => {
     if (!env.OPENAI_API_KEY) {
-      res.status(500).json({ error: "Missing OPENAI_API_KEY" });
+      const mapped = CHAT_ERROR_RESPONSES.CHAT_NOT_CONFIGURED;
+      res.status(mapped.status).json({ code: "CHAT_NOT_CONFIGURED", error: mapped.message });
       return;
     }
-    const { question, context } = req.body || {};
-    if (!question || typeof question !== "string") {
-      res.status(400).json({ error: "Missing question" });
+    const validation = normalizeChatRequest(req.body);
+    if (validation.error) {
+      res.status(400).json({ code: validation.error.code, error: validation.error.message });
       return;
     }
-    const system = [
-      "Eres un asistente del dashboard de consumo de hojas.",
-      "Tu nombre es Fisqui y puedes presentarte si te preguntan.",
-      "Responde en español, claro y breve (2-4 frases).",
-      "Usa los datos del contexto cuando estén disponibles.",
-      "Si falta un dato, dilo y sugiere qué filtro revisar.",
-    ].join(" ");
-    const userPayload = [
-      "Contexto del dashboard:",
-      JSON.stringify(context || {}, null, 2),
-      "",
-      "Pregunta:",
-      question,
-    ].join("\n");
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          temperature: 0.3,
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: userPayload },
-          ],
-        }),
+      const answer = await chatClient.generate({
+        instructions: CHAT_INSTRUCTIONS,
+        input: buildChatInput(validation.value),
       });
-      if (!response.ok) {
-        res.status(500).json({ error: "OpenAI request failed", detail: await response.text() });
-        return;
-      }
-      const data = await response.json();
-      const answer = data?.choices?.[0]?.message?.content?.trim();
-      res.json({ answer: answer || "No pude generar una respuesta." });
+      res.json({ answer });
     } catch (error) {
-      res.status(500).json({ error: "Unexpected error", detail: String(error) });
+      const code = error instanceof OpenAIProviderError ? error.code : "CHAT_PROVIDER_FAILURE";
+      const mapped = CHAT_ERROR_RESPONSES[code] || CHAT_ERROR_RESPONSES.CHAT_PROVIDER_FAILURE;
+      logger.warn?.("Chat provider request failed", { code, status: mapped.status });
+      res.status(mapped.status).json({ code, error: mapped.message });
     }
   });
 

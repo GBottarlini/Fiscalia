@@ -174,7 +174,7 @@ export default function App() {
     };
   }, [serieMensual]);
 
-  const topGlobal = useMemo(() => {
+  const topFiltered = useMemo(() => {
     const lista = totalesPorOficina(consumosFiltrados);
     const top = lista[0];
     const nombre =
@@ -183,6 +183,11 @@ export default function App() {
       "-";
     return top ? { ...top, oficina: nombre, resmas: top.total } : null;
   }, [consumosFiltrados, oficinas]);
+
+  const selectedOfficeName = useMemo(() => {
+    if (!oficina) return "Todas";
+    return oficinas.find((item) => item.codigo_oficina === oficina)?.oficina ?? oficina;
+  }, [oficina, oficinas]);
 
   const showChecking = authStatus === "checking";
   const showLogin = authStatus !== "authed";
@@ -334,8 +339,8 @@ export default function App() {
                       />
                       <KpiCard
                         title="Top oficina"
-                        value={topGlobal?.oficina ?? "-"}
-                        subtitle={`${formatNumber(topGlobal?.resmas ?? 0, 0)} resmas`}
+                        value={topFiltered?.oficina ?? "-"}
+                        subtitle={`${formatNumber(topFiltered?.resmas ?? 0, 0)} resmas`}
                       />
                       <KpiCard
                         title="Mes con mayor consumo"
@@ -393,14 +398,17 @@ export default function App() {
                         filtros: {
                           ano: ano || "-",
                           tipoHoja,
-                          oficina: oficina || "Todas",
+                          codigoOficina: oficina || "Todas",
+                          nombreOficina: selectedOfficeName,
                         },
                         totalResmas: kpis.totalResmas,
                         promedioMensual: kpis.promedioMensual,
-                        topOficinaGlobal: topGlobal?.oficina ?? "-",
-                        topResmasGlobal: topGlobal?.resmas ?? 0,
+                        topOficinaNombre: topFiltered?.oficina ?? "-",
+                        topOficinaCodigo: topFiltered?.codigo_oficina ?? "-",
+                        topOficinaResmas: topFiltered?.resmas ?? 0,
                         mesPico: peakMonth?.peakLabel ?? "-",
                         resmasMesPico: peakMonth?.peakTotal ?? 0,
+                        impactoAguaLitros: resmasALitros(kpis.totalResmas),
                       }}
                     />
                   </div>

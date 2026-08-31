@@ -17,7 +17,7 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 - Consulta protegida de CSV de oficinas y consumo.
 - Carga mensual protegida de consumo con validacion contra oficinas y contrato CSV.
 - Dashboard con KPIs, ranking, tendencia mensual, metas y equivalencias.
-- Chat contextual "Fisqui" via `POST /api/chat` cuando existe `OPENAI_API_KEY`.
+- Chat contextual "Fisqui" via OpenAI Responses API en `POST /api/chat` cuando existe `OPENAI_API_KEY`.
 
 ## Estructura util
 
@@ -28,11 +28,14 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 - `src/lib/data.ts` - transformaciones y agregaciones de consumo.
 - `src/lib/auth.ts` - manejo de token en `localStorage`.
 - `server/app.js` - API Express, login JWT, endpoints CSV y proxy al chat, sin iniciar listener al importarse.
+- `server/openai.js` - cliente HTTP aislado para OpenAI Responses API, con timeout, reintento acotado y extraccion segura de texto.
+- `server/chat.js` - validacion de preguntas, allowlist del contexto agregado y reglas del prompt.
 - `server/index.js` - entrypoint del servidor local.
 - `server/storage.js` - adapters de filesystem local y Netlify Blobs.
 - `netlify/functions/api.mjs` y `netlify.toml` - entrypoint y routing same-origin de `/api/*`.
 - `src/data/` - seeds CSV versionadas para inicializar storage ausente sin sobrescribir datos existentes.
 - `docs/netlify-migration.md` - corte, respaldo, importacion, verificacion y rollback.
+- `docs/chat-operations.md` - privacidad, operacion, smoke test y diagnostico de Fisqui.
 - `AGENTS.md` - reglas globales y jerarquia documental para agentes.
 - `src/AGENTS.md` y `server/AGENTS.md` - guardrails locales para frontend y backend.
 - `src/data/AGENTS.md` - reglas para tocar CSV y estructura de datos.
@@ -49,6 +52,7 @@ Backend (`server/app.js`, `server/index.js` y `server/storage.js`):
 - `ADMIN_PASSWORD_HASH` - hash `salt:hash` para `crypto.scryptSync`.
 - `JWT_SECRET` - secreto para firmar y validar JWT.
 - `OPENAI_API_KEY` - habilita `POST /api/chat`.
+- `OPENAI_MODEL` - modelo de Responses API; default `gpt-4o-mini`.
 - `DATA_DIR` - directorio de CSV editable para el servidor local; default `src/data`. No se usa en Netlify Functions.
 - `CONTEXT` - Netlify lo define por contexto de deploy. Solo `production` puede inicializar o escribir el store site-wide.
 
@@ -86,7 +90,13 @@ node scripts/generate-password-hash.mjs "Fiscalia2026"
 - Los deploy previews comparten el store site-wide, pero quedan en modo solo lectura mediante el `CONTEXT` provisto por Netlify.
 - `/api/health` debe responder `{"ok":true,...,"storage":"netlify-blobs"}` en produccion.
 
-Configurar `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET` y `OPENAI_API_KEY` opcional exclusivamente en la interfaz privada de Netlify, con alcance para Functions. No incluir credenciales en archivos o comandos compartidos. El procedimiento completo para exportar Render, registrar checksums/filas, importar bytes exactos, cortar trafico, verificar y conservar rollback esta en [`docs/netlify-migration.md`](docs/netlify-migration.md).
+Configurar `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET`, `OPENAI_API_KEY` opcional y `OPENAI_MODEL` opcional exclusivamente en la interfaz privada de Netlify, con alcance para Functions. No incluir credenciales en archivos o comandos compartidos. El procedimiento completo para exportar Render, registrar checksums/filas, importar bytes exactos, cortar trafico, verificar y conservar rollback esta en [`docs/netlify-migration.md`](docs/netlify-migration.md).
+
+## Privacidad y operacion de Fisqui
+
+`POST /api/chat` conserva proteccion JWT y envia a OpenAI solamente la pregunta del administrador y una allowlist acotada de metricas agregadas de los filtros actuales. No envia filas CSV, credenciales, JWT, secretos, variables de entorno ni contexto arbitrario del navegador. Las solicitudes usan `store: false`, un limite de salida, timeout estricto y como maximo un reintento para fallas transitorias.
+
+Antes de habilitar Fisqui en produccion, configurar alertas de uso y presupuesto en la cuenta de OpenAI y alertas operativas de Functions en Netlify. Revisar consumo despues de cambiar `OPENAI_MODEL`, porque precio, limites y latencia dependen del modelo. El smoke test, los codigos estables y el procedimiento de diagnostico estan en [`docs/chat-operations.md`](docs/chat-operations.md).
 
 `render.yaml` se conserva marcado como legado solo durante la ventana de rollback. No debe aplicarse como destino activo ni usarse para borrar o mutar recursos productivos de Render.
 
