@@ -1,3 +1,5 @@
+# LEGACY ROLLBACK ONLY. Netlify Functions + Netlify Blobs is the active production target.
+# Do not apply this Blueprint or delete the existing Render service until migration acceptance.
 services:
   - type: web
     name: Fiscalia

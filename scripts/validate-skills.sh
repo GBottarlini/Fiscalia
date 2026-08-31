@@ -91,7 +91,7 @@ find_modern_skills() {
 
 find_markdown_docs() {
   find "$ROOT_DIR" \
-    \( -type d \( -name .git -o -name node_modules -o -name dist -o -name build \) -prune \) -o \
+    \( -type d \( -name .atl -o -name .git -o -name .netlify -o -name node_modules -o -name dist -o -name build \) -prune \) -o \
     \( -type f -name '*.md' -print \) | sort
 }
 

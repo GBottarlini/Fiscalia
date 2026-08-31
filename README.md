@@ -5,10 +5,10 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 ## Stack real
 
 - Frontend: React 19 + Vite 7.
-- Backend: Express 4 en `server/index.js`.
-- Datos: CSV locales en `src/data/`.
+- Backend: Express 4 reutilizable en `server/app.js`, servido localmente por `server/index.js` y en produccion por Netlify Functions.
+- Datos: filesystem local en desarrollo y un store site-wide de Netlify Blobs en produccion; `src/data/` conserva las seeds versionadas.
 - Graficos: `recharts`.
-- Calidad disponible: ESLint con `npm run lint`.
+- Calidad disponible: ESLint con `npm run lint` y tests enfocados con `npm test`.
 
 ## Que hace la app
 
@@ -27,8 +27,12 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 - `src/hooks/useConsumoData.ts` - carga de datos protegidos.
 - `src/lib/data.ts` - transformaciones y agregaciones de consumo.
 - `src/lib/auth.ts` - manejo de token en `localStorage`.
-- `server/index.js` - API Express, login JWT y proxy al chat.
-- `src/data/` - archivos CSV versionados usados por la app.
+- `server/app.js` - API Express, login JWT, endpoints CSV y proxy al chat, sin iniciar listener al importarse.
+- `server/index.js` - entrypoint del servidor local.
+- `server/storage.js` - adapters de filesystem local y Netlify Blobs.
+- `netlify/functions/api.mjs` y `netlify.toml` - entrypoint y routing same-origin de `/api/*`.
+- `src/data/` - seeds CSV versionadas para inicializar storage ausente sin sobrescribir datos existentes.
+- `docs/netlify-migration.md` - corte, respaldo, importacion, verificacion y rollback.
 - `AGENTS.md` - reglas globales y jerarquia documental para agentes.
 - `src/AGENTS.md` y `server/AGENTS.md` - guardrails locales para frontend y backend.
 - `src/data/AGENTS.md` - reglas para tocar CSV y estructura de datos.
@@ -37,7 +41,7 @@ Dashboard web para visualizar consumo de resmas por oficina, comparar periodos y
 
 ## Variables de entorno
 
-Backend (`server/index.js`):
+Backend (`server/app.js`, `server/index.js` y `server/storage.js`):
 
 - `PORT` - puerto del server; default `3001`.
 - `CORS_ORIGIN` - origen permitido; default `http://localhost:5173`. Acepta varios origenes separados por coma y normaliza barras finales.
@@ -45,13 +49,13 @@ Backend (`server/index.js`):
 - `ADMIN_PASSWORD_HASH` - hash `salt:hash` para `crypto.scryptSync`.
 - `JWT_SECRET` - secreto para firmar y validar JWT.
 - `OPENAI_API_KEY` - habilita `POST /api/chat`.
-- `DATA_DIR` - directorio de CSV editable; default `src/data`. En Render apunta al disco persistente.
-- `PERSISTENT_DISK_MOUNT_PATH` - punto de montaje que el backend verifica en Render; default `/opt/render/project/src/storage`.
+- `DATA_DIR` - directorio de CSV editable para el servidor local; default `src/data`. No se usa en Netlify Functions.
+- `CONTEXT` - Netlify lo define por contexto de deploy. Solo `production` puede inicializar o escribir el store site-wide.
 
 Frontend:
 
 - `VITE_API_URL` - base URL del backend; si no existe usa mismo origen.
-  En produccion debe ser `https://fiscalia.onrender.com`.
+  En Netlify debe quedar sin definir para que las llamadas existentes usen `/api/*` en el mismo origen.
 
 ## Desarrollo local
 
@@ -66,49 +70,25 @@ Comandos utiles:
 npm run dev
 npm run dev:server
 npm run lint
+npm test
 node scripts/generate-password-hash.mjs "Fiscalia2026"
 ./scripts/validate-skills.sh
 ```
 
-## Despliegue en Render
+## Despliegue en Netlify
 
-El repo incluye `render.yaml` para crear un unico Web Service Node/Express llamado `Fiscalia`. El frontend existente se mantiene fuera de este Blueprint (por ejemplo, en Netlify).
+`netlify.toml` construye el frontend en `dist`, empaqueta `netlify/functions/api.mjs` y redirige `/api/*` a esa Function sin cambiar las URLs del frontend. La Function reutiliza la app Express sin abrir un listener y persiste en un store site-wide de Netlify Blobs llamado `fiscalia-csv`.
 
-El backend usa `DATA_DIR` para leer y escribir CSV. Si `DATA_DIR` apunta a un disco persistente nuevo, al arrancar copia los CSV versionados desde `src/data/` cuando faltan:
+- Las claves actuales son `oficinas.csv`, `consumo_resmas.csv` y `consumo_resmas_2026.csv`.
+- Todas las lecturas de Blobs usan consistencia fuerte.
+- Una clave ausente se inicializa desde los bytes exactos de `src/data/` con `onlyIfNew`; nunca se pisa una clave existente con una seed.
+- Cada escritura usa ETag + `onlyIfMatch`, crea primero un snapshot versionado y devuelve `CSV_WRITE_CONFLICT` si pierde una carrera.
+- Los deploy previews comparten el store site-wide, pero quedan en modo solo lectura mediante el `CONTEXT` provisto por Netlify.
+- `/api/health` debe responder `{"ok":true,...,"storage":"netlify-blobs"}` en produccion.
 
-- `oficinas.csv`
-- `consumo_resmas.csv`
-- `consumo_resmas_2026.csv`
+Configurar `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET` y `OPENAI_API_KEY` opcional exclusivamente en la interfaz privada de Netlify, con alcance para Functions. No incluir credenciales en archivos o comandos compartidos. El procedimiento completo para exportar Render, registrar checksums/filas, importar bytes exactos, cortar trafico, verificar y conservar rollback esta en [`docs/netlify-migration.md`](docs/netlify-migration.md).
 
-Configuracion prevista por `render.yaml` y por un Web Service creado manualmente:
-
-- Branch: `main`
-- Root Directory: vacio (al omitir `rootDir`, el Blueprint usa la raiz del repositorio)
-- Build Command: `npm ci`
-- Start Command: `npm start`
-- Health Check Path: `/api/health`
-- Plan: `starter` o superior, porque Render no permite discos persistentes en servicios Free.
-- Persistent Disk mount path: `/opt/render/project/src/storage`
-- `DATA_DIR=/opt/render/project/src/storage/data`
-- `PERSISTENT_DISK_MOUNT_PATH=/opt/render/project/src/storage`
-- `CORS_ORIGIN=https://estadisticafiscalia.netlify.app`
-- En Netlify: `VITE_API_URL=https://fiscalia.onrender.com`
-
-Variables que Render debe pedir o generar para el backend:
-
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD_HASH` generado con `node scripts/generate-password-hash.mjs "tu-contraseña"`; no va la contraseña en texto plano.
-- `JWT_SECRET`
-- `OPENAI_API_KEY` si se quiere habilitar el chat
-
-Notas operativas:
-
-- El nombre publico del backend depende del nombre disponible en Render. Si cambia la URL, actualizar `VITE_API_URL` en el frontend desplegado.
-- Para el frontend actual de Netlify, `CORS_ORIGIN` debe incluir exactamente `https://estadisticafiscalia.netlify.app`.
-- El Persistent Disk requiere plan pago en Render. En Free, las cargas se pierden en reinicios, suspensiones o redeploys porque el filesystem es efimero.
-- En Render, el backend verifica si `DATA_DIR` pertenece a un disco distinto del filesystem efimero. Si no hay un disco real, arranca para mantener disponible el servicio pero informa `storage: "ephemeral"` en `/api/health` y registra una advertencia.
-- Cada escritura de consumo se serializa, reemplaza el CSV de forma atomica y conserva la version anterior como `<archivo>.bak` dentro del mismo disco.
-- El endpoint de prueba del backend es `/api/health` y debe responder `{"ok":true}`.
+`render.yaml` se conserva marcado como legado solo durante la ventana de rollback. No debe aplicarse como destino activo ni usarse para borrar o mutar recursos productivos de Render.
 
 ## Operacion con agentes
 
@@ -117,7 +97,7 @@ Notas operativas:
 - `Skills/skill-creator/SKILL.md` sirve para crear skills nuevas sin romper la estructura local.
 - `Skills/skill-sync/SKILL.md` sirve para auditar referencias, metadata y coherencia documental.
 - `Skills/csv-contract-and-curation/SKILL.md` fija encabezados, nombres de archivo y criterios de curacion para `src/data/`.
-- `Skills/protected-csv-api-contract/SKILL.md` documenta el contrato entre `server/index.js` y `src/hooks/useConsumoData.ts`.
+- `Skills/protected-csv-api-contract/SKILL.md` documenta el contrato entre `server/app.js`, `server/storage.js` y `src/hooks/useConsumoData.ts`.
 - `Skills/dashboard-metrics-and-filters/SKILL.md` documenta filtros, agregaciones y metricas derivadas del dashboard.
 
 ## Carga mensual de resmas
@@ -128,7 +108,8 @@ El administrador puede cargar consumos desde el panel `Carga mensual` despues de
 - Valida `fecha` (`YYYY-MM-DD`), deriva `mes` (`YYYY-MM`), valida `codigo_oficina` existente en `oficinas.csv`, `tipo_hoja` (`A4` u `OFICIO`) y `resmas > 0`.
 - Deriva el nombre de oficina desde `oficinas.csv` para evitar inconsistencias manuales.
 - Si ya existe una fila para `mes + codigo_oficina + tipo_hoja`, responde conflicto salvo que el panel envie modo actualizacion.
-- Escribe en `DATA_DIR` si esta configurado; si no, usa `src/data/`. Para años anteriores a 2026 usa `consumo_resmas.csv` y para 2026 o posteriores usa `consumo_resmas_2026.csv`, preservando encabezados.
+- Escribe mediante el adapter activo: filesystem local o Netlify Blobs. Para años anteriores a 2026 usa `consumo_resmas.csv` y para 2026 o posteriores usa `consumo_resmas_2026.csv`, preservando encabezados y orden de filas.
+- En Netlify, una escritura concurrente que parte de un ETag obsoleto no se reintenta ni pisa datos: devuelve `409` con `CSV_WRITE_CONFLICT`.
 - Tras guardar, el frontend recarga los CSV y recalcula KPIs, ranking y graficos.
 
 ## Flujo documental recomendado
@@ -136,7 +117,7 @@ El administrador puede cargar consumos desde el panel `Carga mensual` despues de
 Antes de proponer cambios documentales u operativos:
 
 - leer `README.md`, `AGENTS.md` y los `AGENTS.md` locales de la zona afectada.
-- verificar comandos reales en `package.json` y variables o endpoints reales en `server/index.js`.
+- verificar comandos reales en `package.json` y variables o endpoints reales en `server/app.js`, `server/index.js` y `server/storage.js`.
 - confirmar si la tarea es documental/operativa o funcional para no tocar stack, auth, endpoints ni CSV por error.
 
 Al editar docs o skills:
@@ -163,5 +144,7 @@ Antes de cerrar cambios de documentacion u operaciones con agentes:
 
 ```bash
 npm run lint
+npm test
+npm run build
 ./scripts/validate-skills.sh
 ```

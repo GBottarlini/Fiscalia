@@ -22,7 +22,7 @@ Guia corta para agentes del repo.
 - `Skills/skill-creator/SKILL.md` para crear o adaptar skills reutilizables.
 - `Skills/skill-sync/SKILL.md` despues de tocar skills o referencias documentales.
 - `Skills/csv-contract-and-curation/SKILL.md` al editar o curar `src/data/*.csv`.
-- `Skills/protected-csv-api-contract/SKILL.md` al tocar carga protegida de CSV en `server/index.js` o `src/hooks/useConsumoData.ts`.
+- `Skills/protected-csv-api-contract/SKILL.md` al tocar carga protegida de CSV en `server/app.js`, `server/storage.js` o `src/hooks/useConsumoData.ts`.
 - `Skills/dashboard-metrics-and-filters/SKILL.md` al tocar filtros, KPIs o agregaciones del dashboard.
 
 ## Zonas sensibles
