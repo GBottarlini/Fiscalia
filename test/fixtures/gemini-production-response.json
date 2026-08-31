@@ -1,0 +1,21 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          { "text": "Respuesta generada por Gemini." }
+        ],
+        "role": "model"
+      },
+      "finishReason": "OTHER",
+      "index": 0,
+      "safetyRatings": []
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 10,
+    "candidatesTokenCount": 5,
+    "totalTokenCount": 15
+  },
+  "modelVersion": "gemini-2.5-flash-lite"
+}

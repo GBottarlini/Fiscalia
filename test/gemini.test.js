@@ -8,6 +8,7 @@ import {
   MAX_GEMINI_TIMEOUT_MS,
   parseGeminiTimeoutMs,
 } from "../server/gemini.js";
+import productionResponse from "./fixtures/gemini-production-response.json" with { type: "json" };
 
 function response(payload, status = 200) {
   return new Response(typeof payload === "string" ? payload : JSON.stringify(payload), { status });
@@ -47,6 +48,15 @@ test("sends Gemini REST shape with server-side header and extracts text", async 
     generationConfig: { maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS, temperature: 0.2 },
   });
   assert.doesNotMatch(request.init.body, /test-key/);
+});
+
+test("extracts text from the documented production response shape with a non-STOP finish reason", async () => {
+  const client = createGeminiClient({
+    apiKey: "test-key",
+    fetchImpl: async () => response(productionResponse),
+  });
+
+  assert.equal(await client.generate({ instructions: "rules", input: "question" }), "Respuesta generada por Gemini.");
 });
 
 test("defaults the model and bounds timeout configuration", () => {
@@ -114,6 +124,7 @@ test("rejects malformed, empty, blocked, and truncated output", async (t) => {
     ["malformed", response("not-json")],
     ["empty", completed([])],
     ["blocked", response({ candidates: [{ content: { parts: [] }, finishReason: "SAFETY" }] })],
+    ["recitation blocked", response({ candidates: [{ content: { parts: [{ text: "unsafe" }] }, finishReason: "RECITATION" }] })],
     ["truncated", response({ candidates: [{ content: { parts: [{ text: "partial" }] }, finishReason: "MAX_TOKENS" }] })],
   ];
   for (const [name, providerResponse] of cases) {

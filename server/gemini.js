@@ -21,6 +21,15 @@ function timeoutError() {
   return new GeminiProviderError("CHAT_TIMEOUT", "Gemini request timed out");
 }
 
+const BLOCKED_FINISH_REASONS = new Set([
+  "BLOCKLIST",
+  "LANGUAGE",
+  "PROHIBITED_CONTENT",
+  "RECITATION",
+  "SAFETY",
+  "SPII",
+]);
+
 function extractText(data) {
   if (!data || typeof data !== "object" || !Array.isArray(data.candidates)) {
     throw new GeminiProviderError("CHAT_INVALID_RESPONSE", "Malformed provider response");
@@ -29,8 +38,8 @@ function extractText(data) {
   if (!candidate || !Array.isArray(candidate.content?.parts)) {
     throw new GeminiProviderError("CHAT_INVALID_RESPONSE", "Provider returned no answer");
   }
-  if (candidate.finishReason && candidate.finishReason !== "STOP") {
-    throw new GeminiProviderError("CHAT_INVALID_RESPONSE", "Provider did not return a completed answer");
+  if (BLOCKED_FINISH_REASONS.has(candidate.finishReason) || candidate.finishReason === "MAX_TOKENS") {
+    throw new GeminiProviderError("CHAT_INVALID_RESPONSE", "Provider did not return a usable answer");
   }
   const answer = candidate.content.parts
     .filter((part) => typeof part?.text === "string")
